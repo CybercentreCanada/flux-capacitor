@@ -1,0 +1,9 @@
+rules:
+    - rulename: rule4
+      description: propagate to child only
+      action: parent
+      parent: parent_id
+      child: id
+      tags:
+        - name: parent_process_feature1
+

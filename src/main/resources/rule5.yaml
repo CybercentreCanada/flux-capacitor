@@ -1,0 +1,11 @@
+rules:
+
+    - rulename: rule5
+      description: un-ordered set of events by host
+      action: temporal
+      ordered: false
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+

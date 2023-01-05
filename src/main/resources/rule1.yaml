@@ -1,0 +1,10 @@
+rules:
+    - rulename: rule1
+      description: ordered list of events by host
+      action: temporal
+      ordered: true
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+

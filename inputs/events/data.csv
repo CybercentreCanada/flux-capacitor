@@ -1,0 +1,8 @@
+timestamp,host_id,id,parent_id,captured_folder_colname,Name,ImagePath,Commandline
+2022-12-25 00:00:01,1000,1,0,folderA,"","",""
+2022-12-25 00:00:02,1000,2,0,folderA,"","","abc git show is here"
+2022-12-25 00:00:03,1000,10,1,folderA,"","c:\windows\system\\rundll32.exe","c:\windows\notepad.exe"
+2022-12-25 00:00:04,1000,4,0,folderA,"x","",""
+2022-12-25 00:00:05,1000,5,0,folderA,"","",""
+2022-12-25 00:00:06,1000,100,10,folderA,"","",""
+2022-12-25 00:00:07,1000,7,0,folderA,"","",""

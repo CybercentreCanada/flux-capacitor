@@ -1,0 +1,17 @@
+rules:
+
+    - rulename: rule6
+      description: >
+        ordered list of events by host and for particular context key
+        for example the a regex applied to a file path could capture
+        a folder name and store that value under captured_folder_colname
+        The flux capacitor will propagate the tags seen for folder XYZ
+        to all subsequent rows which have a captured_folder_colname of XYZ
+      action: temporal
+      ordered: true
+      groupby:
+        - captured_folder_colname
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c

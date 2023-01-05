@@ -1,0 +1,10 @@
+rules:
+    
+    - rulename: rule3
+      description: propagate to all decendents
+      action: ancestor
+      tags:
+        - name: ancestor_process_feature1
+      parent: parent_id
+      child: id
+
