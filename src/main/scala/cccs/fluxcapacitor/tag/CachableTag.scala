@@ -18,6 +18,7 @@ abstract class CachableTag(
 
   protected def makeBloomGetKey(): String
 
+  val baseBloomKey = ruleConf.rulename + "." + tagName
   var bloomGetKey: String = ""
   var bloomPutKey: String = ""
   var value: Boolean = false
@@ -53,22 +54,19 @@ abstract class CachableTag(
     }
   }
 
-  protected def makeBloomKey(
-      ruleName: String,
-      tagName: String,
-      colname: String = ""
-  ): String = {
+  protected def makeBloomKey(colname: String = ""): String = {
     if (colname.isEmpty()) {
-      ruleName + "." + tagName
+      baseBloomKey
     } else {
-      var prefixValue = getColumnValue(colname)
-      log.debug(s"prefix [$prefixValue] retrieved for column [$colname]")
-      ruleName + "." + prefixValue + "." + tagName
+      var suffix = getColumnValue(colname)
+      if (log.isTraceEnabled)
+        log.trace(s"suffix [$suffix] retrieved for column [$colname]")
+      baseBloomKey + "." + suffix
     }
   }
 
   def storeInCache(): Unit = {
-    log.debug(s"storing key: $bloomPutKey in bloom")
+    if(log.isTraceEnabled()) log.trace(s"storing key: $bloomPutKey in bloom")
     tagCache.put(bloomPutKey)
   }
 
@@ -91,15 +89,15 @@ abstract class CachableTag(
   protected def pushOrPullFromCache() = {
     if (currentValue()) {
       // put "this" tag in the bloom
-      log.debug("the tag was raised in this row, store tag in bloom")
+      if (log.isTraceEnabled())
+        log.trace("the tag was raised in this row, store tag in bloom")
       storeInCache()
     } else {
       // get "this" tag from the bloom
-      log.debug(
-        "the tag is not raised in this row, cached value is: " + isCached()
-      )
+      if (log.isTraceEnabled())
+        log.trace("current value is false, cached value is: " + isCached())
       mergeCachedWithCurrent()
-      log.debug("merged value is " + currentValue())
+      if (log.isTraceEnabled()) log.trace("merged value is " + currentValue())
     }
   }
 

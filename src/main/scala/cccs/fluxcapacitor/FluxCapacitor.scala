@@ -11,13 +11,109 @@ import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.streaming.GroupState
 import org.apache.spark.sql.streaming.GroupStateTimeout
 import org.apache.spark.sql.streaming.OutputMode.Update
+import org.apache.spark.sql.streaming.OutputMode.Append
 
 import java.sql.Timestamp
+import java.nio.ByteBuffer
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
+import com.esotericsoftware.kryo.Kryo
+import java.io.ByteArrayOutputStream
+import java.io.ObjectOutputStream
+import java.io.ByteArrayInputStream
+import java.io.ObjectInputStream
+import scala.collection.mutable.ArrayBuffer
 
-case class FluxState(bloomCapacity: Int) {
-  val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomCapacity, 0.01)
+case class FluxState(
+    var version: Int,
+    var active: Int,
+    var serializedBlooms: List[Array[Byte]]
+) extends TagCache {
+
+  val log = Logger.getLogger(this.getClass)
+
+  @transient var blooms: List[BloomFilter[CharSequence]] = List()
+  @transient var putCount = 0L
+
+  override def put(tagName: String): Unit = {
+    putCount += 1L
+    getActiveBloom().put(tagName)
+  }
+
+  override def get(tagName: String): Boolean = {
+    getActiveBloom().mightContain(tagName)
+  }
+
+  def init(bloomCapacity: Int): FluxState = {
+    val bloom = createBloom(bloomCapacity)
+    blooms = List(bloom)
+    this
+  }
+
+  def toState(): FluxState = {
+    version += 1
+    // we only store the active blooms, all other blooms were un-changed
+    val byteArrayOut = new ByteArrayOutputStream()
+    val store = new ObjectOutputStream(byteArrayOut)
+    store.writeObject(getActiveBloom())
+    store.close
+    serializedBlooms = List(byteArrayOut.toByteArray())
+    val fpp = getActiveBloom().expectedFpp()
+    log.debug(
+      f"preparing for storage, active bloom is $active and it's fpp is $fpp%1.8f, num puts: $putCount"
+    )
+    this
+  }
+
+  def getActiveBloom(): BloomFilter[CharSequence] = {
+    blooms(active)
+  }
+
+  def cycleBloom(bloomCapacity: Int): Unit = {
+    log.debug("cycling blooms")
+    active = (active + 1) % 10
+    val newBloom = createBloom(bloomCapacity)
+    if (blooms.length == 10) {
+      log.debug(s"replacing bloom at index $active")
+      val buff = blooms.to[ArrayBuffer]
+      buff(active) = newBloom
+      blooms = buff.toList
+    } else {
+      log.debug("adding a bloom to the list")
+      blooms = blooms ++ List(newBloom)
+    }
+    val fpp = getActiveBloom().expectedFpp()
+    log.debug(f"active bloom is $active and it's fpp is $fpp%1.8f")
+  }
+
+  def fromState(bloomCapacity: Int): FluxState = {
+    blooms = serializedBlooms
+      .map(theBytes => {
+        val byteArrayInput = new ByteArrayInputStream(theBytes)
+        val input = new ObjectInputStream(byteArrayInput)
+        val obj = input.readObject()
+        obj.asInstanceOf[BloomFilter[CharSequence]]
+      })
+
+    val fpp = getActiveBloom().expectedFpp()
+    if (fpp > 0.01) {
+      log.debug(f"active bloom $active is full. fpp $fpp%1.8f > 0.01")
+      cycleBloom(bloomCapacity)
+    }
+
+    this
+  }
+
+  def createBloom(bloomCapacity: Int) = {
+    val bloomSize: Int = bloomCapacity / 10
+    val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomSize, 0.01)
+    val prep = (bloomSize * 0.95).toInt
+    (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
+    bloom
+  }
+
 }
-
 case class FluxCapacitorMapFunction(
     val bloomCapacity: Int,
     val specification: String
@@ -29,7 +125,7 @@ case class FluxCapacitorMapFunction(
     var startSort = System.currentTimeMillis()
     val sorted = orderedRows.sortWith((r1: Row, r2: Row) =>
       r1.getTimestamp(timestampIndex)
-        .compareTo(r2.getTimestamp(timestampIndex)) >= 0
+        .compareTo(r2.getTimestamp(timestampIndex)) <= 0
     )
     var endSort = System.currentTimeMillis()
     log.debug(
@@ -57,34 +153,33 @@ case class FluxCapacitorMapFunction(
   }
 
   def processBatch(
-      key: Int,
+      key: String,
       rows: Iterator[Row],
       state: GroupState[FluxState]
   ): Iterator[Row] = {
-    val startTotal = System.currentTimeMillis()
-    val fluxState: FluxState = state.exists match {
-      case true  => state.get
-      case false => FluxState(bloomCapacity)
-    }
 
-    var feature_set = 0
-    var feature_get = 0
+    val startTotal = System.currentTimeMillis()
+    var fluxState: FluxState =
+      state.exists match {
+        case true => state.get.fromState(bloomCapacity)
+        case false => {
+          log.debug(
+            s"new bloom 1% flase positive rate at capacity: $bloomCapacity"
+          )
+          FluxState(0, 0, List()).init(bloomCapacity)
+        }
+      }
 
     val sorted = sortInputRows(rows.toSeq)
     checkSorted(sorted)
-
+    // val sorted = rows.toSeq
     val rulesConf = RulesConf.load(specification)
 
-    val tagCache = new BloomTagCache(fluxState.bloom)
+    val rules = new RulesAdapter(new Rules(rulesConf, fluxState))
+    val outputRows = sorted.map(row => rules.evaluateRow(row))
 
-    val outputRows = sorted.map(row =>
-      new RulesAdapter(new Rules(rulesConf, tagCache)).evaluateRow(row)
-    )
-
-    val fpp = fluxState.bloom.expectedFpp
-    state.update(fluxState)
+    state.update(fluxState.toState())
     log.debug(outputRows.size + " rows processed for group key: " + key)
-    log.debug("puts: " + feature_set + " gets: " + feature_get + " fpp: " + fpp)
     val endTotal = System.currentTimeMillis
     log.debug(
       "total time spent in map with group state (ms): " + (endTotal - startTotal)
@@ -106,15 +201,16 @@ object FluxCapacitor {
     val sparkSession: SparkSession = SparkSession.builder.getOrCreate
     import sparkSession.implicits._
     val outputEncoder = RowEncoder(df.schema).resolveAndBind()
+
     val stateEncoder = Encoders.product[FluxState]
     val func = new FluxCapacitorMapFunction(bloomCapacity, specification)
 
     var groupKeyIndex = df.schema.fieldIndex(groupKey)
 
     df
-      .groupByKey(row => row.getInt(groupKeyIndex))
+      .groupByKey(row => row.getString(groupKeyIndex))
       .flatMapGroupsWithState(
-        Update,
+        Append,
         GroupStateTimeout.NoTimeout()
       )(func.processBatch)(stateEncoder, outputEncoder)
   }

@@ -7,7 +7,7 @@ class TransitoryTag(val value: Boolean) extends Tag {
   override def currentValue(): Boolean = value
 
   override def evaluateRow(row: Row) = {
-    log.debug("evaluating ImmutableTag")
+    if (log.isTraceEnabled) log.trace("evaluating ImmutableTag")
     currentValue()
   }
 

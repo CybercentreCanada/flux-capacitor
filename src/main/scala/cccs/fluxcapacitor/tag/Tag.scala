@@ -20,23 +20,23 @@ object Tag {
   val log = Logger.getLogger(this.getClass)
 
   def createTag(ruleConf: RuleConf, name: String, tagCache: TagCache): Tag = {
-    log.debug(s"creating : ${ruleConf.rulename} tagname: $name")
+    if (log.isTraceEnabled) log.trace(s"creating : ${ruleConf.rulename} tagname: $name")
 
     ruleConf.action match {
       case "parent" => {
-        log.debug("creating a parent tag for parent action")
+        if (log.isTraceEnabled) log.trace("creating a parent tag for parent action")
         new ParentTag(name, ruleConf, tagCache)
       }
       case "ancestor" => {
-        log.debug("creating a ancestor tag for ancestor action")
+        if (log.isTraceEnabled) log.trace("creating a ancestor tag for ancestor action")
         new AncestorTag(name, ruleConf, tagCache)
       }
       case "temporal" if ruleConf.ordered => {
-        log.debug("creating a ordered tag for ordered action")
+        if (log.isTraceEnabled) log.trace("creating a ordered tag for ordered action")
         new OrderedTag(name, ruleConf, tagCache)
       }
       case "temporal" if ruleConf.ordered == false => {
-        log.debug("creating a default tag for un-ordered action")
+        if (log.isTraceEnabled) log.trace("creating a default tag for un-ordered action")
         new DefaultTag(name, ruleConf, tagCache)
       }
       case _ =>

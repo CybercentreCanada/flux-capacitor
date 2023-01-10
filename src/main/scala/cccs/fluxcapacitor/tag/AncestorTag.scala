@@ -12,12 +12,13 @@ class AncestorTag(
 ) extends ParentTag(tagName, ruleConf, tagCache) {
 
   override def evaluate() = {
-    log.debug("evaluating AncestorTag")
+    if (log.isTraceEnabled) log.trace("evaluating AncestorTag")
     // get "that" tag from the bloom
     mergeCachedWithCurrent()
     if (currentValue()) {
       // put "this" tag in the bloom
-      log.debug("the tag was raised in this row, store tag true in bloom")
+      if (log.isTraceEnabled)
+        log.trace("the tag was raised in this row, store tag true in bloom")
       storeInCache()
     }
     currentValue()

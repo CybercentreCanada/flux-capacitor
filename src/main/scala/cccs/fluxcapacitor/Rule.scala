@@ -26,7 +26,7 @@ class Rule(ruleConf: RuleConf, tagCache: TagCache) {
   }
 
   def evaluateRow(row: Row, sigmaResults: SigmaMap): TagMap = {
-    log.debug(s"evaluating rule in this order ${ruleConf.rulename}")
+    if (log.isTraceEnabled) log.trace(s"evaluating rule in this order ${ruleConf.rulename}")
     val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
     val allTagNames = tagEvaluatorMap.keySet ++ tagValuesMap.keySet
     val allTagEvaluatorMap = allTagNames
@@ -47,7 +47,7 @@ class Rule(ruleConf: RuleConf, tagCache: TagCache) {
         }
         false
       })
-    log.debug("tag evaluation order is as follows: " + orderedEvaluators)
+    if (log.isTraceEnabled) log.trace("tag evaluation order is as follows: " + orderedEvaluators)
 
     // find and set pre-requisit evaluators
     val orderedInitedEvaluators = orderedEvaluators
@@ -63,9 +63,9 @@ class Rule(ruleConf: RuleConf, tagCache: TagCache) {
 
     orderedInitedEvaluators
       .map({ case (tagName, evaluator) =>
-        log.debug(s"Evaluating tag: $tagName")
+        if (log.isTraceEnabled) log.trace(s"Evaluating tag: $tagName")
         var value = evaluator.evaluateRow(row)
-        log.debug(s"Tag: $tagName evaluated current value: $value")
+        if (log.isTraceEnabled) log.trace(s"Tag: $tagName evaluated current value: $value")
         (tagName -> value)
       })
       .toMap

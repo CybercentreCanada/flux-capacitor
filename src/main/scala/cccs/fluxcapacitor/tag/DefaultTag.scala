@@ -14,7 +14,7 @@ class DefaultTag(
 ) extends CachableTag(tagName, ruleConf, tagCache) {
 
   override def evaluate(): Boolean = {
-    log.debug("evaluating DefaultTag")
+    if (log.isTraceEnabled) log.trace("evaluating DefaultTag")
     pushOrPullFromCache()
     currentValue()
   }
@@ -24,9 +24,9 @@ class DefaultTag(
     if (ruleConf.groupby != null) {
       // if a groupby is specified
       val colname = ruleConf.groupby.head
-      makeBloomKey(ruleConf.rulename, tagName, colname)
+      makeBloomKey(colname)
     } else {
-      makeBloomKey(ruleConf.rulename, tagName)
+      makeBloomKey()
     }
   }
 

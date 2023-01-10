@@ -30,20 +30,21 @@ class OrderedTag(
   def getPrerequisiteTag() = prerequisiteTag.get
 
   override def evaluate() = {
-    log.debug("evaluating OrderedTag")
+    if (log.isTraceEnabled) log.trace("evaluating OrderedTag")
 
     if (putCondition.isEmpty()) {
-      log.debug("no put conditions, invoking base class to handle it")
+      if (log.isTraceEnabled)
+        log.trace("no put conditions, invoking base class to handle it")
       super.evaluate()
     } else {
       var preTag = getPrerequisiteTag().asInstanceOf[CachableTag]
       // we will refer to the tag specified in the put_condition as "that" tag
-      log.debug("ordered tag dependes on : " + preTag)
+      if (log.isTraceEnabled) log.trace("ordered tag dependes on : " + preTag)
       // Tag thatTag = this.tagMap.get(thatTagName)
       // assert (thatTag instanceof BaseTag)
       // merge retrieved value with the current value of "that" tag
       // note "that" tag has already been evaluated (the tags are sorted apriori)
-      log.debug("prerequisiteTag is cached: " + preTag)
+      if (log.isTraceEnabled) log.trace("prerequisiteTag is cached: " + preTag)
       if (preTag.isCached()) {
         // previous event has been seen, we can proceed.
         pushOrPullFromCache()
