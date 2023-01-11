@@ -18,55 +18,64 @@ class Rule(ruleConf: RuleConf, tagCache: TagCache) {
     .map(tag => (tag.name -> Tag.createTag(ruleConf, tag.name, tagCache)))
     .toMap
 
-  def getEvaluator(name: String, currentValue: Boolean): Tag = {
+  def getEvaluator(name: String): Tag = {
     tagEvaluatorMap.get(name) match {
-      case Some(tag) => tag.setCurrentValue(currentValue)
-      case None      => TransitoryTag.of(currentValue)
+      case Some(tag) => tag
+      case None      => new TransitoryTag()
     }
+  }
+
+  var orderedInitedEvaluators:Option[Seq[(String, Tag)]] = None
+  
+  def getEvaluators(sigmaResults: SigmaMap) = {
+    if (orderedInitedEvaluators == None) {
+      val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
+      val allTagNames = tagEvaluatorMap.keySet ++ tagValuesMap.keySet
+      val allTagEvaluatorMap = allTagNames
+      // for every tag, create a tag evaluator
+      .map(tagName => (tagName, getEvaluator(tagName)))
+    
+
+      // order evaulators according to inter dependencies
+      val orderedEvaluators = allTagEvaluatorMap.toSeq
+        .sortWith({ case ((tag1, evaluator1), (tag2, evaluator2)) =>
+          if (evaluator1.isInstanceOf[OrderedTag]) {
+            val e1OrderedTag = evaluator1.asInstanceOf[OrderedTag]
+            if (tag2.equals(e1OrderedTag.getPutCondition())) {
+              // e1 depends on e2
+              true
+            }
+          }
+          false
+        })
+      if (log.isTraceEnabled) log.trace("tag evaluation order is as follows: " + orderedEvaluators)
+
+      // find and set pre-requisit evaluators
+      orderedInitedEvaluators = Some(orderedEvaluators
+        .map({ case (tagName, evaluator) =>
+          if (evaluator.isInstanceOf[OrderedTag]) {
+            val orderedTag = evaluator.asInstanceOf[OrderedTag]
+            val prerequisite = orderedTag.getPutCondition()
+            val prerequisiteTag = tagEvaluatorMap.get(prerequisite)
+            orderedTag.setPrerequisiteTag(prerequisiteTag)
+          }
+          (tagName -> evaluator)
+        }))
+    }
+    orderedInitedEvaluators.get
   }
 
   def evaluateRow(row: Row, sigmaResults: SigmaMap): TagMap = {
     if (log.isTraceEnabled) log.trace(s"evaluating rule in this order ${ruleConf.rulename}")
-    val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
-    val allTagNames = tagEvaluatorMap.keySet ++ tagValuesMap.keySet
-    val allTagEvaluatorMap = allTagNames
-      // for every tag, get the value or set it to false
-      .map(tagName => (tagName -> tagValuesMap.getOrElse(tagName, false)))
-      // for every tag, create a tag evaluator
-      .map({ case (tagName, value) => (tagName, getEvaluator(tagName, value)) })
-
-    // order evaulators according to inter dependencies
-    val orderedEvaluators = allTagEvaluatorMap.toSeq
-      .sortWith({ case ((tag1, evaluator1), (tag2, evaluator2)) =>
-        if (evaluator1.isInstanceOf[OrderedTag]) {
-          val e1OrderedTag = evaluator1.asInstanceOf[OrderedTag]
-          if (tag2.equals(e1OrderedTag.getPutCondition())) {
-            // e1 depends on e2
-            true
-          }
-        }
-        false
-      })
-    if (log.isTraceEnabled) log.trace("tag evaluation order is as follows: " + orderedEvaluators)
-
-    // find and set pre-requisit evaluators
-    val orderedInitedEvaluators = orderedEvaluators
-      .map({ case (tagName, evaluator) =>
-        if (evaluator.isInstanceOf[OrderedTag]) {
-          val orderedTag = evaluator.asInstanceOf[OrderedTag]
-          val prerequisite = orderedTag.getPutCondition()
-          val prerequisiteTag = tagEvaluatorMap.get(prerequisite)
-          orderedTag.setPrerequisiteTag(prerequisiteTag)
-        }
-        (tagName -> evaluator)
-      })
-
-    orderedInitedEvaluators
+    getEvaluators(sigmaResults)
       .map({ case (tagName, evaluator) =>
         if (log.isTraceEnabled) log.trace(s"Evaluating tag: $tagName")
-        var value = evaluator.evaluateRow(row)
-        if (log.isTraceEnabled) log.trace(s"Tag: $tagName evaluated current value: $value")
-        (tagName -> value)
+        val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
+        val value = tagValuesMap.getOrElse(tagName, false)
+        evaluator.setCurrentValue(value)
+        var retValue = evaluator.evaluateRow(row)
+        if (log.isTraceEnabled) log.trace(s"Tag: $tagName evaluated current value: $retValue")
+        (tagName -> retValue)
       })
       .toMap
   }

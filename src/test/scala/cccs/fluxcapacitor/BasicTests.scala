@@ -31,6 +31,57 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
   var tagCache = new MapTagCache
   var rules = new Rules(loadYamlSpecification("rule5.yaml"), tagCache)
 
+  val rule1 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val rule2 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val rule3 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val rule4 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val rule5 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val rule6 = scala.collection.immutable.Map(
+    "recon_cmd_a" -> false,
+    "recon_cmd_b" -> false,
+    "recon_cmd_c" -> false,
+    "recon_cmd_d" -> false
+  )
+
+  val allTagsFalse = scala.collection.immutable.Map(
+    "rule1" -> rule1,
+    "rule2" -> rule2,
+    "rule3" -> rule3,
+    "rule4" -> rule4,
+    "rule5" -> rule5,
+    "rule6" -> rule6,
+  )
+
   def createRow(
       fqTags: Seq[String],
       id: String,
@@ -58,9 +109,21 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
   }
 
   def makeSigmaResults(fqTags: Seq[String]): SigmaMap = {
-    makeSigmaFromFullyQualified(fqTags).map { case (ruleName, tagNames) =>
-      (ruleName -> tagNames.map(tagName => (tagName, true)).toMap)
+    val sigmaMap = makeSigmaFromFullyQualified(fqTags).map {
+      case (ruleName, tagNames) =>
+        (ruleName -> tagNames.map(tagName => (tagName, true)).toMap)
     }
+
+    val ret = scala.collection.mutable
+      .Map[String, scala.collection.immutable.Map[String, Boolean]]()
+
+    allTagsFalse.keySet.foreach(ruleName => {
+      val map1 = allTagsFalse.get(ruleName).get
+      val map2 = sigmaMap.get(ruleName).getOrElse(Map())
+      val tags = map1 ++ map2
+      ret.put(ruleName, tags)
+    })
+    ret
   }
 
   def makeSigmaFromFullyQualified(fqTags: Seq[String]) = {
@@ -140,7 +203,9 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
 
   def makeRules(fileName: String) = {
     tagCache = new MapTagCache
-    rules = new Rules(loadYamlSpecification(fileName), tagCache)
+    val ruleConf = loadYamlSpecification(fileName)
+    rules = new Rules(ruleConf, tagCache)
+    rules
   }
 
   test("un-ordered set of events by host") {
@@ -172,7 +237,6 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
       )
     )
   }
-
 
   test("ordered list of events by host") {
     /*

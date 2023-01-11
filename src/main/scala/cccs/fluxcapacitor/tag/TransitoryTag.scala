@@ -2,7 +2,9 @@ package cccs.fluxcapacitor.tag
 
 import org.apache.spark.sql.Row
 
-class TransitoryTag(val value: Boolean) extends Tag {
+class TransitoryTag() extends Tag {
+
+  var value = false
 
   override def currentValue(): Boolean = value
 
@@ -11,15 +13,8 @@ class TransitoryTag(val value: Boolean) extends Tag {
     currentValue()
   }
 
-  override def setCurrentValue(value: Boolean): Tag = this // noop
-}
-
-object TransitoryTag {
-  val trueTag = new TransitoryTag(true)
-  val faslseTag = new TransitoryTag(false)
-
-  def of(value: Boolean) = value match {
-    case true  => trueTag
-    case false => faslseTag
+  override def setCurrentValue(value: Boolean): Tag = {
+    this.value = value
+    this
   }
 }
