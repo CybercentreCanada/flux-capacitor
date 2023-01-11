@@ -808,15 +808,23 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   }
 
   private def compressStream(outputStream: DataOutputStream): DataOutputStream = {
-    //val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
-    //  .compressedOutputStream(outputStream)
-    new DataOutputStream(outputStream)
+    if(USE_COMPRESSED_STREAMS){
+      val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
+        .compressedOutputStream(outputStream)
+      new DataOutputStream(compressed)
+    } else {
+      new DataOutputStream(outputStream)
+    }
   }
 
   private def decompressStream(inputStream: DataInputStream): DataInputStream = {
-    //val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
-    //  .compressedInputStream(inputStream)
-    new DataInputStream(inputStream)
+    if(USE_COMPRESSED_STREAMS){
+      val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
+        .compressedInputStream(inputStream)
+      new DataInputStream(compressed)
+    } else {
+      new DataInputStream(inputStream)
+    }
   }
 
   private def deltaFile(version: Long): Path = {
