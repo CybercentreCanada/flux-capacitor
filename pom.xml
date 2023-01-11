@@ -54,6 +54,16 @@
         </dependencies>
     </dependencyManagement>
     <dependencies>
+        <dependency>
+            <groupId>org.apache.htrace</groupId>
+            <artifactId>htrace-core4</artifactId>
+            <version>4.1.0-incubating</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>1.5.2-1</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-yaml -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -112,25 +122,24 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.roaringbitmap</groupId>
+            <artifactId>RoaringBitmap</artifactId>
+            <version>0.9.38</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-common</artifactId>
-            <version>1.1.0</version>
+            <artifactId>iceberg-spark3-runtime</artifactId>
+            <version>0.13.2</version>
         </dependency>
+
 
         <dependency>
             <groupId>org.apache.iceberg</groupId>
             <artifactId>iceberg-core</artifactId>
             <version>1.1.0</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-parquet</artifactId>
-            <version>1.1.0</version>
-        </dependency>
-
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -406,6 +415,6 @@
                 <artifactId>scalatest-maven-plugin</artifactId>
             </plugin>
         </plugins>
-        
+
     </build>
 </project>
