@@ -35,6 +35,9 @@ case class FluxState(
 
   @transient var blooms: List[BloomFilter[CharSequence]] = List()
   @transient var putCount = 0L
+  @transient val desiredFpp = 0.0001
+  @transient val NUM_BLOOMS = 10
+  @transient var tagCapacity = 0
 
   override def put(tagName: String): Unit = {
     putCount += 1L
@@ -45,8 +48,8 @@ case class FluxState(
     getActiveBloom().mightContain(tagName)
   }
 
-  def init(bloomCapacity: Int): FluxState = {
-    val bloom = createBloom(bloomCapacity)
+  def init(): FluxState = {
+    val bloom = createBloom()
     blooms = List(bloom)
     this
   }
@@ -54,7 +57,13 @@ case class FluxState(
   def toState(): FluxState = {
     version += 1
     // we only store the active blooms, all other blooms were un-changed
-    val byteArrayOut = new ByteArrayOutputStream()
+    // we make sure to pre-allocate the output buffer, this has drastic measured performance improvement
+    // in an experiment each micro-batch took 80 seconds, with pre-allocated buffer it went down to 30 seconds.
+    // Doing this also help JVM GC pressure, there is way less intermediary arrays created while it grows.
+    // We know approximately the size of the bloom in bytes so we can easily pre-allocate the buffer.
+    // Note the size depends on the false positive 
+    val approxsize = tagCapacity / NUM_BLOOMS * 3
+    val byteArrayOut = new ByteArrayOutputStream(approxsize)
     val store = new ObjectOutputStream(byteArrayOut)
     store.writeObject(getActiveBloom())
     store.close
@@ -70,11 +79,11 @@ case class FluxState(
     blooms(active)
   }
 
-  def cycleBloom(bloomCapacity: Int): Unit = {
+  def cycleBloom(): Unit = {
     log.debug("cycling blooms")
-    active = (active + 1) % 10
-    val newBloom = createBloom(bloomCapacity)
-    if (blooms.length == 10) {
+    active = (active + 1) % NUM_BLOOMS
+    val newBloom = createBloom()
+    if (blooms.length == NUM_BLOOMS) {
       log.debug(s"replacing bloom at index $active")
       val buff = blooms.to[ArrayBuffer]
       buff(active) = newBloom
@@ -87,7 +96,7 @@ case class FluxState(
     log.debug(f"active bloom is $active and it's fpp is $fpp%1.8f")
   }
 
-  def fromState(bloomCapacity: Int): FluxState = {
+  def fromState(): FluxState = {
     blooms = serializedBlooms
       .map(theBytes => {
         val byteArrayInput = new ByteArrayInputStream(theBytes)
@@ -97,25 +106,29 @@ case class FluxState(
       })
 
     val fpp = getActiveBloom().expectedFpp()
-    if (fpp > 0.01) {
-      log.debug(f"active bloom $active is full. fpp $fpp%1.8f > 0.01")
-      cycleBloom(bloomCapacity)
+    if (fpp > desiredFpp) {
+      log.debug(f"active bloom $active is full. fpp $fpp%1.8f > $desiredFpp")
+      cycleBloom()
+    }
+    else if (version % 5 == 0) {
+      log.debug(f"trigger bloom cycle, just for testing!")
+      cycleBloom()
     }
 
     this
   }
 
-  def createBloom(bloomCapacity: Int) = {
-    val bloomSize: Int = bloomCapacity / 10
-    val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomSize, 0.01)
-    val prep = (bloomSize * 0.95).toInt
-    (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
+  def createBloom() = {
+    val bloomCapacity: Int = tagCapacity / NUM_BLOOMS
+    val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomCapacity, desiredFpp)
+    //val prep = (bloomCapacity * 0.95).toInt
+    //(1 to prep).map("padding" + _).foreach(s => bloom.put(s))
     bloom
   }
 
 }
 case class FluxCapacitorMapFunction(
-    val bloomCapacity: Int,
+    val tagCapacity: Int,
     val specification: String
 ) extends Serializable {
   @transient lazy val log = Logger.getLogger(this.getClass)
@@ -161,12 +174,15 @@ case class FluxCapacitorMapFunction(
     val startTotal = System.currentTimeMillis()
     var fluxState: FluxState =
       state.exists match {
-        case true => state.get.fromState(bloomCapacity)
+        case true => {
+          val fluxState = state.get
+          fluxState.tagCapacity = tagCapacity
+          fluxState.fromState()
+        }
         case false => {
-          log.debug(
-            s"new bloom 1% flase positive rate at capacity: $bloomCapacity"
-          )
-          FluxState(0, 0, List()).init(bloomCapacity)
+          val fluxState = FluxState(0, 0, List())
+          fluxState.tagCapacity = tagCapacity
+          fluxState.init()
         }
       }
 
@@ -195,7 +211,7 @@ object FluxCapacitor {
   def invoke(
       df: Dataset[Row],
       groupKey: String,
-      bloomCapacity: Int,
+      tagCapacity: Int,
       specification: String
   ): Dataset[Row] = {
     val sparkSession: SparkSession = SparkSession.builder.getOrCreate
@@ -203,7 +219,7 @@ object FluxCapacitor {
     val outputEncoder = RowEncoder(df.schema).resolveAndBind()
 
     val stateEncoder = Encoders.product[FluxState]
-    val func = new FluxCapacitorMapFunction(bloomCapacity, specification)
+    val func = new FluxCapacitorMapFunction(tagCapacity, specification)
 
     var groupKeyIndex = df.schema.fieldIndex(groupKey)
 
