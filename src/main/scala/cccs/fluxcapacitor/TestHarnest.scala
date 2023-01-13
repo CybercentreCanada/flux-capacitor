@@ -17,12 +17,23 @@ object TestHarnest {
         println("Hello, world")
 
 
-    var conf = Config(rate=5001, partitions=1, numhosts=1, numfeatures=100000, numbloom=1, trigger=2, xmx="3G", store="fluxstore", catalog="file:///tmp/iceberg")
+    var conf = Config(rate=10, partitions=1, numhosts=1, numfeatures=100000, numbloom=1, trigger=2, xmx="2G", store="fluxstore", catalog="file:///tmp/iceberg")
 
 
 
     var output_table = s"experiment.jcc.${conf.name}"
     var checkpoint = s"${conf.catalog}/jcc/${conf.name}/checkpoint/"
+
+    var useFluxStateStore = false
+    var useFluxStateStoreCompression = false
+    if (conf.store == "fluxstore"){
+      useFluxStateStore = true
+      useFluxStateStoreCompression = false
+    }
+    else if (conf.store == "fluxstorecomp"){
+      useFluxStateStore = true
+      useFluxStateStoreCompression = true
+    }
 
     var builder = (
         SparkSession.builder
@@ -39,9 +50,10 @@ object TestHarnest {
             .config("spark.sql.catalog.experiment.warehouse", conf.catalog)
             .config("spark.jars", "./target/flux-capacitor-1.jar")
             .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
+            .config("spark.cccs.fluxcapacitor.compression", useFluxStateStoreCompression )
     )
     
-    if (conf.store == "fluxstore"){
+    if (useFluxStateStore){
     builder = (builder
         .config("spark.sql.streaming.stateStore.providerClass", 
                 "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
@@ -535,7 +547,7 @@ object TestHarnest {
 
 
     df.printSchema()
-    df = FluxCapacitor.invoke(df, "group_key", conf.numfeatures, flux_update_spec)
+    df = FluxCapacitor.invoke(df, "group_key", conf.numfeatures, flux_update_spec, useFluxStateStore)
     df.printSchema()
     
     var query = (

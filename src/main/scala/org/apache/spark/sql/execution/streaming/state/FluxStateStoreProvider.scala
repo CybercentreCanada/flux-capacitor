@@ -126,6 +126,7 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
     val VERSION_INDEX = 0
     val ACTIVE_INDEX = 1
     val SERIALIZED_BLOOMS_INDEX = 2
+    val TAGCOUNT_INDEX = 3
 
     // CCCS: We hard code the number of blooms
     val NUM_BLOOMS = 10
@@ -141,6 +142,13 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
       val fluxStateRow = row.getStruct(0, 3)
       fluxStateRow.getInt(ACTIVE_INDEX)
     }
+    
+    def getTagCount(row: UnsafeRow) = {
+      // The root row contains one field the "groupState" holding our FluxState row
+      // The FluxState class has 3 fields, thus there are 4 columns in the FluxState struct
+      val fluxStateRow = row.getStruct(0, 3)
+      fluxStateRow.getInt(TAGCOUNT_INDEX)
+    }
 
     // CCCS: deserialize a row representing a FluxState
     def deserializeFluxState(value: UnsafeRow): FluxState = {
@@ -153,8 +161,9 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
       var unsafeBloomArray = fluxStateRow.getArray(SERIALIZED_BLOOMS_INDEX)
       // When storing state we get only 1 bloom to store, get that serialized bloom
       var modifiedSerializedBloom = unsafeBloomArray.getBinary(0)
+      var tagCount = fluxStateRow.getInt(TAGCOUNT_INDEX)
       // We can now create a row to store
-      FluxState(version, active, List(modifiedSerializedBloom))
+      FluxState(version, active, List(modifiedSerializedBloom), tagCount)
     }
 
     // CCCS: Coalesce the values we put into the store
@@ -162,7 +171,7 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
     def coalesceFluxStates(fluxStates: Seq[FluxState]): FluxState = {
       val binBloomArray = mutable.ArrayBuffer[Array[Byte]]()
       var latestActive = -1
-      var latestVersion = -1
+      var latestVersion = -1L
       for(fluxState <- fluxStates) {
         binBloomArray += fluxState.serializedBlooms(0)
         if (fluxState.version > latestVersion) {
@@ -201,6 +210,9 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
       verify(state == UPDATING, "Cannot put after already committed or aborted")
       //val keyCopy = key.copy()
       val valueCopy = value.copy()
+
+      activeBloomTagCount.add(getTagCount(valueCopy))
+
       // Create the key to store this bloom using the bloom id (active)
       val newRowKey = makeRowKey(key.getString(0), getActiveValue(valueCopy))
       // Store key/value as normal
@@ -283,7 +295,8 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   def getMetricsForProvider(): Map[String, Long] = synchronized {
     Map("memoryUsedBytes" -> SizeEstimator.estimate(loadedMaps),
       metricLoadedMapCacheHit.name -> loadedMapCacheHitCount.sum(),
-      metricLoadedMapCacheMiss.name -> loadedMapCacheMissCount.sum())
+      metricLoadedMapCacheMiss.name -> loadedMapCacheMissCount.sum(),
+      metricActiveBloomTagCount.name -> activeBloomTagCount.sum())
   }
 
   /** Get the state store for making updates to create a new `version` of the store. */
@@ -349,7 +362,7 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   }
 
   override def supportedCustomMetrics: Seq[StateStoreCustomMetric] = {
-    metricStateOnCurrentVersionSizeBytes :: metricLoadedMapCacheHit :: metricLoadedMapCacheMiss ::
+    metricStateOnCurrentVersionSizeBytes :: metricLoadedMapCacheHit :: metricLoadedMapCacheMiss :: metricActiveBloomTagCount ::
       Nil
   }
 
@@ -380,6 +393,14 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
 
   private val loadedMapCacheHitCount: LongAdder = new LongAdder
   private val loadedMapCacheMissCount: LongAdder = new LongAdder
+
+  // CCCS: added a metric to count number of tags set into blooms
+  // this can be viewed in the spark UI
+  private val activeBloomTagCount: LongAdder = new LongAdder
+
+  private lazy val metricActiveBloomTagCount: StateStoreCustomSizeMetric =
+    StateStoreCustomSizeMetric("activeBloomTagCount",
+      "number of tags stored in currently active bloom")
 
   private lazy val metricStateOnCurrentVersionSizeBytes: StateStoreCustomSizeMetric =
     StateStoreCustomSizeMetric("stateOnCurrentVersionSizeBytes",
@@ -808,7 +829,9 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   }
 
   private def compressStream(outputStream: DataOutputStream): DataOutputStream = {
-    if(USE_COMPRESSED_STREAMS){
+    val useCompression = hadoopConf.getBoolean("spark.cccs.fluxcapacitor.compression", false)
+    log.debug(s"writing using compression $useCompression")
+    if(useCompression){
       val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
         .compressedOutputStream(outputStream)
       new DataOutputStream(compressed)
@@ -818,7 +841,9 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   }
 
   private def decompressStream(inputStream: DataInputStream): DataInputStream = {
-    if(USE_COMPRESSED_STREAMS){
+    val useCompression = hadoopConf.getBoolean("spark.cccs.fluxcapacitor.compression", false)
+    log.debug(s"reading using compression $useCompression")
+    if(useCompression){
       val compressed = CompressionCodec.createCodec(sparkConf, storeConf.compressionCodec)
         .compressedInputStream(inputStream)
       new DataInputStream(compressed)
