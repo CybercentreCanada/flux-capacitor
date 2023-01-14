@@ -17,7 +17,7 @@ object TestHarnest {
         println("Hello, world")
 
 
-    var conf = Config(rate=10, partitions=1, numhosts=1, numfeatures=100000, numbloom=1, trigger=2, xmx="2G", store="fluxstore", catalog="file:///tmp/iceberg")
+    var conf = Config(rate=1, partitions=1, numhosts=1, numfeatures=100000, numbloom=1, trigger=2, xmx="2G", store="fluxstore", catalog="file:///tmp/iceberg")
 
 
 

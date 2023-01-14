@@ -127,6 +127,9 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
     val ACTIVE_INDEX = 1
     val SERIALIZED_BLOOMS_INDEX = 2
     val TAGCOUNT_INDEX = 3
+    var SORT_TIMER_INDEX = 4
+    var UPDATETAGCACHE_TIMER_INDEX = 5
+    val FLUXSTATE_NUM_FIELDS = 6
 
     // CCCS: We hard code the number of blooms
     val NUM_BLOOMS = 10
@@ -138,23 +141,27 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
 
     def getActiveValue(row: UnsafeRow) = {
       // The root row contains one field the "groupState" holding our FluxState row
-      // The FluxState class has 3 fields, thus there are 4 columns in the FluxState struct
-      val fluxStateRow = row.getStruct(0, 3)
+      val fluxStateRow = row.getStruct(0, FLUXSTATE_NUM_FIELDS)
       fluxStateRow.getInt(ACTIVE_INDEX)
     }
     
     def getTagCount(row: UnsafeRow) = {
-      // The root row contains one field the "groupState" holding our FluxState row
-      // The FluxState class has 3 fields, thus there are 4 columns in the FluxState struct
-      val fluxStateRow = row.getStruct(0, 3)
+      val fluxStateRow = row.getStruct(0, FLUXSTATE_NUM_FIELDS)
       fluxStateRow.getInt(TAGCOUNT_INDEX)
+    }
+    def getSortTime(row: UnsafeRow) = {
+      val fluxStateRow = row.getStruct(0, FLUXSTATE_NUM_FIELDS)
+      fluxStateRow.getLong(SORT_TIMER_INDEX)
+    }
+    def getUpdateTagCacheTime(row: UnsafeRow) = {
+      val fluxStateRow = row.getStruct(0, FLUXSTATE_NUM_FIELDS)
+      fluxStateRow.getLong(UPDATETAGCACHE_TIMER_INDEX)
     }
 
     // CCCS: deserialize a row representing a FluxState
     def deserializeFluxState(value: UnsafeRow): FluxState = {
       // The root row contains one field the "groupState" holding our FluxState row
-      // The FluxState class has 3 fields, thus there are 4 columns in the FluxState struct
-      val fluxStateRow = value.getStruct(0, 3)
+      val fluxStateRow = value.getStruct(0, FLUXSTATE_NUM_FIELDS)
       // The FluxState struct has 4 fields, get each of them
       var version = fluxStateRow.getInt(VERSION_INDEX)
       var active = fluxStateRow.getInt(ACTIVE_INDEX)
@@ -212,6 +219,8 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
       val valueCopy = value.copy()
 
       activeBloomTagCount.add(getTagCount(valueCopy))
+      sortTimer.add(getSortTime(valueCopy))
+      updateTagCacheTimer.add(getUpdateTagCacheTime(valueCopy))
 
       // Create the key to store this bloom using the bloom id (active)
       val newRowKey = makeRowKey(key.getString(0), getActiveValue(valueCopy))
@@ -296,7 +305,10 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
     Map("memoryUsedBytes" -> SizeEstimator.estimate(loadedMaps),
       metricLoadedMapCacheHit.name -> loadedMapCacheHitCount.sum(),
       metricLoadedMapCacheMiss.name -> loadedMapCacheMissCount.sum(),
-      metricActiveBloomTagCount.name -> activeBloomTagCount.sum())
+      metricActiveBloomTagCount.name -> activeBloomTagCount.sum(),
+      metricSortTimer.name -> sortTimer.sum(),
+      metricUpdateTagCacheTimer.name -> updateTagCacheTimer.sum(),
+    )
   }
 
   /** Get the state store for making updates to create a new `version` of the store. */
@@ -362,7 +374,8 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   }
 
   override def supportedCustomMetrics: Seq[StateStoreCustomMetric] = {
-    metricStateOnCurrentVersionSizeBytes :: metricLoadedMapCacheHit :: metricLoadedMapCacheMiss :: metricActiveBloomTagCount ::
+    metricStateOnCurrentVersionSizeBytes :: metricLoadedMapCacheHit :: metricLoadedMapCacheMiss :: 
+      metricActiveBloomTagCount :: metricSortTimer :: metricUpdateTagCacheTimer ::
       Nil
   }
 
@@ -397,10 +410,18 @@ private[sql] class FluxStateStoreProvider extends StateStoreProvider with Loggin
   // CCCS: added a metric to count number of tags set into blooms
   // this can be viewed in the spark UI
   private val activeBloomTagCount: LongAdder = new LongAdder
+  private val sortTimer: LongAdder = new LongAdder
+  private val updateTagCacheTimer: LongAdder = new LongAdder
 
-  private lazy val metricActiveBloomTagCount: StateStoreCustomSizeMetric =
-    StateStoreCustomSizeMetric("activeBloomTagCount",
+  private lazy val metricActiveBloomTagCount: StateStoreCustomSumMetric =
+    StateStoreCustomSumMetric("activeBloomTagCount",
       "number of tags stored in currently active bloom")
+  private lazy val metricSortTimer: StateStoreCustomTimingMetric =
+    StateStoreCustomTimingMetric("sortTimer",
+      "time spent sorting row batches")
+  private lazy val metricUpdateTagCacheTimer: StateStoreCustomTimingMetric =
+    StateStoreCustomTimingMetric("updateTagCacheTimer",
+      "time spent updating tag cache")
 
   private lazy val metricStateOnCurrentVersionSizeBytes: StateStoreCustomSizeMetric =
     StateStoreCustomSizeMetric("stateOnCurrentVersionSizeBytes",

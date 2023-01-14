@@ -74,14 +74,19 @@ case class FluxCapacitorMapFunction(
         }
       }
 
+    val startSort = System.currentTimeMillis()
     val sorted = sortInputRows(rows.toSeq)
-    checkSorted(sorted)
-    // val sorted = rows.toSeq
-    val rulesConf = RulesConf.load(specification)
+    val endSort = System.currentTimeMillis()
 
+    checkSorted(sorted)
+    val startTagCacheUpdate = System.currentTimeMillis()
+    val rulesConf = RulesConf.load(specification)
     val rules = new RulesAdapter(new Rules(rulesConf, fluxState))
     val outputRows = sorted.map(row => rules.evaluateRow(row))
+    val endTagCacheUpdate = System.currentTimeMillis()
 
+    fluxState.updateTagCacheTimer = endTagCacheUpdate - startTagCacheUpdate
+    fluxState.sortTimer = endSort - startSort
     state.update(fluxState.toState())
     log.debug(outputRows.size + " rows processed for group key: " + key)
     val endTotal = System.currentTimeMillis
