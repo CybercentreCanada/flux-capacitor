@@ -5,11 +5,8 @@ target
 core-site.xml
 telemetry
 
-reading_iceberg_is_ordered.py
-experiment*.py
-
-
 .metals
 .bloop
 .bsp
-.scalafmt.conf
+
+experiments
