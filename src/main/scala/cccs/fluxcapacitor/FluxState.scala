@@ -19,13 +19,15 @@ case class FluxState(
     var serializedBlooms: List[Array[Byte]] = List(),
     var tagCount: Long = 0,
     var sortTimer: Long = 0,
-    var updateTagCacheTimer: Long = 0
+    var updateTagCacheTimer: Long = 0,
+    var fromStateTimer: Long = 0,
+    var toStateTimer: Long = 0
 ) extends TagCache {
 
   val log = Logger.getLogger(this.getClass)
 
   @transient var blooms: List[BloomFilter[CharSequence]] = List()
-  @transient val desiredFpp = 0.0001
+  @transient var desiredFpp = 0.0001
   @transient val NUM_BLOOMS = 10
   @transient var tagCapacity = 0
   @transient var useFluxStore = false
@@ -56,8 +58,20 @@ case class FluxState(
     this
   }
 
+  def estimateBloomSize(): Int = {
+    val padding = 4000
+    val n = tagCapacity / NUM_BLOOMS
+    // Formula taken from https://hur.st/bloomfilter
+    // m = ceil( (n * log(p)) / log(1 / pow(2, log(2))))
+    val mBits = Math.ceil( (n * Math.log(desiredFpp)) / Math.log(1 / Math.pow(2, Math.log(2))))
+    val numBytes = (mBits / 8).toInt + padding
+    numBytes
+  }
+
   def toState(): FluxState = {
+    toStateTimer = System.currentTimeMillis()
     version += 1
+    val numBytes = estimateBloomSize()
     // we make sure to pre-allocate the output buffer, this has drastic measured performance improvement
     // in an experiment each micro-batch took 80 seconds, with pre-allocated buffer it went down to 30 seconds.
     // Doing this also help JVM GC pressure, there is way less intermediary arrays created while it grows.
@@ -65,16 +79,14 @@ case class FluxState(
     // Note the size depends on the false positive
     serializedBlooms = if (useFluxStore) {
       // we only store the active blooms, all other blooms were un-changed
-      val approxsize = tagCapacity / NUM_BLOOMS * 3
-      val byteArrayOut = new ByteArrayOutputStream(approxsize)
+      val byteArrayOut = new ByteArrayOutputStream(numBytes)
       val store = new ObjectOutputStream(byteArrayOut)
       store.writeObject(getActiveBloom())
       store.close
       List(byteArrayOut.toByteArray())
     } else {
       blooms.map(bloom => {
-        val approxsize = tagCapacity / NUM_BLOOMS * 3
-        val byteArrayOut = new ByteArrayOutputStream(approxsize)
+        val byteArrayOut = new ByteArrayOutputStream(numBytes)
         val store = new ObjectOutputStream(byteArrayOut)
         store.writeObject(bloom)
         store.close
@@ -130,6 +142,8 @@ case class FluxState(
       log.debug(f"trigger bloom cycle, just for testing!")
       cycleBloom()
     }
+
+    fromStateTimer = System.currentTimeMillis() - fromStateTimer
 
     this
   }

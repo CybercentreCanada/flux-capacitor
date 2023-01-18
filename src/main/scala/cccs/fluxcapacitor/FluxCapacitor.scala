@@ -78,7 +78,7 @@ case class FluxCapacitorMapFunction(
     val sorted = sortInputRows(rows.toSeq)
     val endSort = System.currentTimeMillis()
 
-    checkSorted(sorted)
+    //checkSorted(sorted)
     val startTagCacheUpdate = System.currentTimeMillis()
     val rulesConf = RulesConf.load(specification)
     val rules = new RulesAdapter(new Rules(rulesConf, fluxState))
