@@ -17,7 +17,8 @@ case class FluxState(
     var version: Long = 0,
     var active: Int = 0,
     var serializedBlooms: List[Array[Byte]] = List(),
-    var tagCount: Long = 0,
+    var putCount: Long = 0,
+    var getCount: Long = 0,
     var sortTimer: Long = 0,
     var updateTagCacheTimer: Long = 0,
     var fromStateTimer: Long = 0,
@@ -33,7 +34,7 @@ case class FluxState(
   @transient var useFluxStore = false
 
   override def put(tagName: String): Unit = {
-    tagCount += 1L
+    putCount += 1L
     getActiveBloom().put(tagName)
   }
 
@@ -42,6 +43,7 @@ case class FluxState(
       log.trace(s"number of blooms ${blooms.length}")
       log.trace(s"active bloom is $active")
     }
+    getCount += 1L
     val currentNumBlooms = blooms.length
     val oldest = active - currentNumBlooms + 1
     (oldest to active).reverse
@@ -94,9 +96,11 @@ case class FluxState(
       })
     }
     val fpp = getActiveBloom().expectedFpp()
-    log.debug(
-      f"preparing for storage, active bloom is $active and it's fpp is $fpp%1.8f, num puts: $tagCount"
-    )
+    if(log.isTraceEnabled()){
+      log.trace(
+        f"preparing for storage, active bloom is $active and it's fpp is $fpp%1.8f, num puts: $putCount, num gets: $getCount"
+      )
+    }
     this
   }
 
