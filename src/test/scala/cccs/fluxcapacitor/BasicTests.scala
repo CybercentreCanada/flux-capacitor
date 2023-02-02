@@ -28,7 +28,9 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
                                                     |captured_folder_colname string
                                                     |""".stripMargin)
   val capacity = 10000
-  var tagCache = new MapTagCache
+  var tagCache : MapTagCache = _
+
+  //new MapTagCache
   var rules = new Rules(loadYamlSpecification("rule5.yaml"), tagCache)
 
   val rule1 = scala.collection.immutable.Map(

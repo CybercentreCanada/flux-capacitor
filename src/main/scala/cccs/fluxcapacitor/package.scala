@@ -21,10 +21,10 @@ package object fluxcapacitor {
   val SERIALIZED_BLOOMS_INDEX = 2
   val PUTCOUNT_INDEX = 3
   val GETCOUNT_INDEX = 4
-  var SORT_TIMER_INDEX = 5
-  var UPDATETAGCACHE_TIMER_INDEX = 6
-  var FROMSTATE_TIMER_INDEX = 7
-  var TOSTATE_TIMER_INDEX = 8
+  val SORT_TIMER_INDEX = 5
+  val UPDATETAGCACHE_TIMER_INDEX = 6
+  val FROMSTATE_TIMER_INDEX = 7
+  val TOSTATE_TIMER_INDEX = 8
   val FLUXSTATE_NUM_FIELDS = 9
 
   // CCCS: We hard code the number of blooms

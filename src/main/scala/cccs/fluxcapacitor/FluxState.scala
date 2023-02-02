@@ -142,10 +142,11 @@ case class FluxState(
     if (fpp > desiredFpp) {
       log.debug(f"active bloom $active is full. fpp $fpp%1.8f > $desiredFpp")
       cycleBloom()
-    } else if (version % 5 == 0) {
-      log.debug(f"trigger bloom cycle, just for testing!")
-      cycleBloom()
     }
+    //  else if (version % 5 == 0) {
+    //   log.debug(f"trigger bloom cycle, just for testing!")
+    //   cycleBloom()
+    // }
 
     fromStateTimer = System.currentTimeMillis() - fromStateTimer
 
@@ -154,9 +155,8 @@ case class FluxState(
 
   def createBloom() = {
     val bloomCapacity: Int = tagCapacity / NUM_BLOOMS
-    val bloom =
-      BloomFilter.create(Funnels.stringFunnel(), bloomCapacity, desiredFpp)
-    val prep = (bloomCapacity * 0.95).toInt
+    val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomCapacity, desiredFpp)
+    val prep = (bloomCapacity * Math.random()).toInt
     (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
     bloom
   }
