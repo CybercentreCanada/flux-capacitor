@@ -148,20 +148,14 @@ def start_query(conf):
     sigmaTags = sigmaTags[:-1]
 
     sql = f"""
-    select *, sigma as sigma_input from (
+    select * from (
          select
-             a_uuid,
-             a_uuid || '_' || value || '_' || 'childkey' AS key,
-             a_uuid || '_' || value || '_' || 'parentkey' AS parent_key,
-             map( 
-                {sigmaTags}
-             ) AS sigma,
+             map('rule1', map('tag1', TRUE)) as sigma,
              timestamp,
-             value,
-             cast(host_id % {conf.numbloom} as string) AS group_key
+             --value,
+             cast(1 % {conf.numbloom} as string) AS group_key
          from
              events
-             join hosts on {join_condition}
      )
      """
 
@@ -215,11 +209,16 @@ def start_query(conf):
     
     spark.udf.register("executor_metrics", executor_metrics, executor_metrics_schema)
 
-    hosts = spark.range(conf.numhosts).withColumn('a_uuid', F.expr('uuid()')).withColumnRenamed('id', 'host_id')
-    hosts.persist()
-    hosts.createOrReplaceTempView("hosts")
-    hosts.show()
-    print(hosts.count())
+    # hosts = spark.range(conf.numhosts).withColumn('a_uuid', F.expr('uuid()')).withColumnRenamed('id', 'host_id')
+
+    # hosts.writeTo(f'experiment.jcc.host_table').createOrReplace()
+
+    # hosts = spark.table(f'experiment.jcc.host_table')
+
+    # hosts.persist()
+    # hosts.createOrReplaceTempView("hosts")
+    # hosts.show()
+    # print(hosts.count())
     
     # df = (
     #     spark.readStream
@@ -236,7 +235,7 @@ def start_query(conf):
         .format("rate")
         .option("rowsPerSecond", conf.rate)
         .load()
-        .withWatermark("timestamp", "0 seconds")
+        #.withWatermark("timestamp", "0 seconds")
         .withColumn("name", F.lit(conf.name))
     )
     
@@ -251,15 +250,17 @@ def start_query(conf):
     df = flux_capacitor(df, flux_update_spec, conf.numfeatures, "group_key", conf.store)
     df.printSchema()
     
+    #df = df.filter(F.expr("value % 10000 = 0"))
+
     query = (
         df
         .writeStream
-        .format("iceberg")
+        .format("console")
         .outputMode("append")
-        .trigger(processingTime=f"{conf.trigger} seconds")
+        .trigger(continuous=f"{conf.trigger} seconds")
         .queryName(conf.name)
         .option("checkpointLocation", checkpoint)
-        .toTable(output_table)
+        .start()
     )
 
     batchId = -1

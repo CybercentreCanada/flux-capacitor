@@ -1,0 +1,499 @@
+{
+    "fields": [
+        {
+            "metadata": {},
+            "name": "batchId",
+            "nullable": true,
+            "type": "long"
+        },
+        {
+            "metadata": {},
+            "name": "disk_used",
+            "nullable": true,
+            "type": "long"
+        },
+        {
+            "metadata": {},
+            "name": "durationMs",
+            "nullable": true,
+            "type": {
+                "fields": [
+                    {
+                        "metadata": {},
+                        "name": "addBatch",
+                        "nullable": true,
+                        "type": "long"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "getBatch",
+                        "nullable": true,
+                        "type": "long"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "latestOffset",
+                        "nullable": true,
+                        "type": "long"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "queryPlanning",
+                        "nullable": true,
+                        "type": "long"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "triggerExecution",
+                        "nullable": true,
+                        "type": "long"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "walCommit",
+                        "nullable": true,
+                        "type": "long"
+                    }
+                ],
+                "type": "struct"
+            }
+        },
+        {
+            "metadata": {},
+            "name": "eventTime",
+            "nullable": true,
+            "type": {
+                "fields": [
+                    {
+                        "metadata": {},
+                        "name": "avg",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "max",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "min",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "watermark",
+                        "nullable": true,
+                        "type": "string"
+                    }
+                ],
+                "type": "struct"
+            }
+        },
+        {
+            "metadata": {},
+            "name": "executor_memory",
+            "nullable": true,
+            "type": "string"
+        },
+        {
+            "metadata": {},
+            "name": "id",
+            "nullable": true,
+            "type": "string"
+        },
+        {
+            "metadata": {},
+            "name": "inputRowsPerSecond",
+            "nullable": true,
+            "type": "double"
+        },
+        {
+            "metadata": {},
+            "name": "name",
+            "nullable": true,
+            "type": "string"
+        },
+        {
+            "metadata": {},
+            "name": "numInputRows",
+            "nullable": true,
+            "type": "long"
+        },
+        {
+            "metadata": {},
+            "name": "processedRowsPerSecond",
+            "nullable": true,
+            "type": "double"
+        },
+        {
+            "metadata": {},
+            "name": "runId",
+            "nullable": true,
+            "type": "string"
+        },
+        {
+            "metadata": {},
+            "name": "sink",
+            "nullable": true,
+            "type": {
+                "fields": [
+                    {
+                        "metadata": {},
+                        "name": "description",
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    {
+                        "metadata": {},
+                        "name": "numOutputRows",
+                        "nullable": true,
+                        "type": "long"
+                    }
+                ],
+                "type": "struct"
+            }
+        },
+        {
+            "metadata": {},
+            "name": "sources",
+            "nullable": true,
+            "type": {
+                "containsNull": true,
+                "elementType": {
+                    "fields": [
+                        {
+                            "metadata": {},
+                            "name": "description",
+                            "nullable": true,
+                            "type": "string"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "endOffset",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "inputRowsPerSecond",
+                            "nullable": true,
+                            "type": "double"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "latestOffset",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numInputRows",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "processedRowsPerSecond",
+                            "nullable": true,
+                            "type": "double"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "startOffset",
+                            "nullable": true,
+                            "type": "long"
+                        }
+                    ],
+                    "type": "struct"
+                },
+                "type": "array"
+            }
+        },
+        {
+            "metadata": {},
+            "name": "stateOperators",
+            "nullable": true,
+            "type": {
+                "containsNull": true,
+                "elementType": {
+                    "fields": [
+                        {
+                            "metadata": {},
+                            "name": "allRemovalsTimeMs",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "allUpdatesTimeMs",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "commitTimeMs",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "customMetrics",
+                            "nullable": true,
+                            "type": {
+                                "fields": [
+                                {
+                                    "metadata": {},
+                                    "name": "updateTagCacheTimer",
+                                    "nullable": true,
+                                    "type": "long"
+                                },
+                                {
+                                    "metadata": {},
+                                    "name": "getTagCount",
+                                    "nullable": true,
+                                    "type": "long"
+                                },
+                                {
+                                        "metadata": {},
+                                        "name": "putTagCount",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "sortTimer",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "fromStateTimer",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "toStateTimer",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbBytesCopied",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitCheckpointLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitCompactLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitFileSyncLatencyMs",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitFlushLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitPauseLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbCommitWriteBatchLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbFilesCopied",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbFilesReused",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbGetCount",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbGetLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbPutCount",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbPutLatency",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbReadBlockCacheHitCount",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbReadBlockCacheMissCount",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbSstFileSize",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalBytesRead",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalBytesReadByCompaction",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalBytesReadThroughIterator",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalBytesWritten",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalBytesWrittenByCompaction",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbTotalCompactionLatencyMs",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbWriterStallLatencyMs",
+                                        "nullable": true,
+                                        "type": "long"
+                                    },
+                                    {
+                                        "metadata": {},
+                                        "name": "rocksdbZipFileBytesUncompressed",
+                                        "nullable": true,
+                                        "type": "long"
+                                    }
+                                ],
+                                "type": "struct"
+                            }
+                        },
+                        {
+                            "metadata": {},
+                            "name": "memoryUsedBytes",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numRowsDroppedByWatermark",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numRowsRemoved",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numRowsTotal",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numRowsUpdated",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numShufflePartitions",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "numStateStoreInstances",
+                            "nullable": true,
+                            "type": "long"
+                        },
+                        {
+                            "metadata": {},
+                            "name": "operatorName",
+                            "nullable": true,
+                            "type": "string"
+                        }
+                    ],
+                    "type": "struct"
+                },
+                "type": "array"
+            }
+        },
+        {
+            "metadata": {},
+            "name": "timestamp",
+            "nullable": true,
+            "type": "string"
+        },
+        {
+            "metadata": {},
+            "name": "worker_name",
+            "nullable": true,
+            "type": "string"
+        }
+    ],
+    "type": "struct"
+}
