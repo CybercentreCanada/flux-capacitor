@@ -1,109 +1,17 @@
-# The Flux Capacitor Aggregation Function
+# Flux-Capacitor Spark map with group state
 
-Now we need a means to update these tags over time. We need a way to acculate and access them later.
+Sigma is a generic signature format that allows you to make detections in log events. Rules are easy to write and applicable to any type of log. Best of all, Sigma rules are abstract and not tied to any particular SIEM, making Sigma rules shareable.
 
-`flux_capacitor` is a custom aggregate functions that updates and retrieves detection flags according to a specification. The detections argument is a map of map as explained above.
+Once a cyber security researcher or analyst develops detection method, they can use Sigma to describe and share their technique with others. Here’s a quote from Sigma HQ:
 
+> Sigma is for log files what Snort is for network traffic and YARA is for files.
 
+## Use Spark Streaming to run Detections
 
-Example 1: ordered temporal rules recon_cmd_a, recon_cmd_b, recon_cmd_c, recon_cmd_d
-We don't need to remember recon_cmd_d so we omit it from the update specification
+Spark Structured streaming can easily evaluate the SQL produced by the sigmac compiler. First we create a streaming dataframe by connecting to our favorite queuing mechanism (EventHubs, Kafka). In this example, we will readStream from an Iceberg table, where events are incrementally inserted into. Find out more about Iceberg’s streaming capabilities here.
 
-recon_cmd_b is only stored when a previous recon_cmd_a was true
-
-```yaml
-rules:
-
-    - rulename: rule6
-      description: >
-        ordered list of events by host and for particular context key
-        for example the a regex applied to a file path could capture
-        a folder name and store that value under captured_folder_colname
-        The flux capacitor will propagate the tags seen for folder XYZ
-        to all subsequent rows which have a captured_folder_colname of XYZ
-      action: temporal
-      ordered: true
-      groupby:
-        - captured_folder_colname
-      tags:
-        - name: recon_cmd_a
-        - name: recon_cmd_b
-        - name: recon_cmd_c
-
-
-```
-
-Example 2: un-ordered temporal rules recon_cmd_a, recon_cmd_b, recon_cmd_c
-We don't need to remember recon_cmd_c, so we omit it from the update specification
-
-
-Example 3: infinit ancestor
-
-```yaml
-rules:
-    
-    - rulename: rule3
-      description: propagate to all decendents
-      action: ancestor
-      tags:
-        - name: ancestor_process_feature1
-      parent: parent_id
-      child: id
-
-
-```
-
-Example 4: just check parent
-```yaml
-rules:
-    - rulename: rule4
-      description: propagate to child only
-      action: parent
-      parent: parent_id
-      child: id
-      tags:
-        - name: parent_process_feature1
-
-```
-
-Example 5: un-ordered temporal rules, no prefix keys. Context is the entire machine.
-
-```yaml
-rules:
-    - rulename: rule1
-      description: ordered list of events by host
-      action: temporal
-      ordered: true
-      tags:
-        - name: recon_cmd_a
-        - name: recon_cmd_b
-        - name: recon_cmd_c
-
-```
-
-```yaml
-rules:
-
-    - rulename: rule5
-      description: un-ordered set of events by host
-      action: temporal
-      ordered: false
-      tags:
-        - name: recon_cmd_a
-        - name: recon_cmd_b
-        - name: recon_cmd_c
-
-```
-
-
-
-
-
-
-
-
-
-
+## The Parent Process Challenge
+Detecting anomalies in discrete events is relatively trivial. However, Sigma rules can correlate an event with previous ones. A classic example of this is found in Windows Security Logs (Event ID 4688). In this log source we find information about a process being created. A crucial piece of information in this log is the process that started this process. You can use these Process ID to determine what the program did while it ran etc.
 
 
 ### We will use these 3 Sigma rules as examples of rules using parent process attributes
@@ -182,4 +90,161 @@ detection:
             - '&1'
     condition: 1 of selection_*
 ```
+
+### [temporal proximity](https://github.com/SigmaHQ/sigma-specification/blob/version_2/Sigma_meta_rules.md#temporal-proximity-temporal)
+
+
+```yaml
+action: correlation
+type: temporal
+rules:
+    - recon_cmd_a
+    - recon_cmd_b
+    - recon_cmd_c
+group-by:
+    - ComputerName
+    - User
+timespan: 5m
+ordered: false
+```
+
+
+
+
+
+
+# The Flux Capacitor Aggregation Function
+
+
+
+
+```yaml
+rules:
+
+    - rulename: rule6
+      description: >
+        ordered list of events by host and for particular context key
+        for example the a regex applied to a file path could capture
+        a folder name and store that value under captured_folder_colname
+        The flux capacitor will propagate the tags seen for folder XYZ
+        to all subsequent rows which have a captured_folder_colname of XYZ
+      action: temporal
+      ordered: true
+      groupby:
+        - captured_folder_colname
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
+
+```
+
+```yaml
+rules:
+    
+    - rulename: rule3
+      description: propagate to all decendents
+      action: ancestor
+      tags:
+        - name: ancestor_process_feature1
+      parent: parent_id
+      child: id
+
+
+```
+
+
+```yaml
+rules:
+    - rulename: rule4
+      description: propagate to child only
+      action: parent
+      parent: parent_id
+      child: id
+      tags:
+        - name: parent_process_feature1
+
+```
+
+
+```yaml
+rules:
+    - rulename: rule1
+      description: ordered list of events by host
+      action: temporal
+      ordered: true
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
+```
+
+```yaml
+rules:
+
+    - rulename: rule5
+      description: un-ordered set of events by host
+      action: temporal
+      ordered: false
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
+```
+
+
+```python
+
+def flux_capacitor(input_df, spec, bloom_capacity, group_col):
+    """Python function to invoke the scala code"""
+    spark = SparkSession.builder.getOrCreate()
+    flux_stateful_function = spark._sc._jvm.cccs.fluxcapacitor.FluxCapacitor.invoke
+    jdf = flux_stateful_function(
+            input_df._jdf, 
+            group_col, 
+            bloom_capacity, 
+            spec)
+    return DataFrame(jdf, spark)
+```
+
+```python
+
+flux_update_spec = """
+rules:
+    - rulename: rule4
+      description: propagate to child only
+      action: parent
+      parent: parent_id
+      child: id
+      tags:
+        - name: parent_process_feature1
+    - rulename: rule5
+      description: un-ordered set of events by host
+      action: temporal
+      ordered: false
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+"""
+df = (
+        spark.readStream
+        .format("kafka")
+        .load()
+    )
+
+df = flux_capacitor(df, flux_update_spec, bloomsize, "group_key")
+
+```
+
+
+
+
+
+
+
+
 
