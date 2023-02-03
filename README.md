@@ -4,42 +4,6 @@ Now we need a means to update these tags over time. We need a way to acculate an
 
 `flux_capacitor` is a custom aggregate functions that updates and retrieves detection flags according to a specification. The detections argument is a map of map as explained above.
 
-```
-flux_capacitor(detections, update_specification)
-```
-
-The update_specification specifies which tags are temporal and how they should be updated.
-
-A temporal update specification consists of 4 attributes
-1) `name` the name of the tag to update
-2) `prefix_get` tags are stored in a bloom filter with a key of `name`. Optionally, you can add a prefix to this key. The prefix value is obtain from the value in the specified column name.
-3) `prefix_put` in some cases like parent-child relationships the get/put key prefix values will be different.
-4) `put_condition` by default any tag that is true will be stored in the bloom filter. However, you can place conditions under which the tag is stored. For example, if you need set a tag only if a previous tag was seen you can specify a `put_condition`.
-
-```
-eval(tag):
-    if "this" tag is not evaluated yet
-        if "this" tag has a put_condition
-            we will refer to the tag specified in the put_condition as "that" tag
-            if "this" equals "that"
-                get "that" tag from the bloom
-            else
-                eval("that") tag
-            merge retrieved value with the current value of "that" tag
-            if "that" tag is true
-                put "this" tag in the bloom (honoring the put_condition)
-        else
-            if "this" tag is true
-                put "this" tag in the bloom
-            else
-                get "this" tag from the bloom    
-    mark "this" tag as evaluated
-    
-for every rule
-    for every tag
-        eval(tag)
-
-```
 
 
 Example 1: ordered temporal rules recon_cmd_a, recon_cmd_b, recon_cmd_c, recon_cmd_d
@@ -47,102 +11,89 @@ We don't need to remember recon_cmd_d so we omit it from the update specificatio
 
 recon_cmd_b is only stored when a previous recon_cmd_a was true
 
-```json
-{
-    "rule_name": "rule1"
-    "tags": [
-        {
-            "name": "recon_cmd_a",
-            "prefix_get": "captured_folder_colname",
-            "prefix_put": "captured_folder_colname"
-        },
-        {
-            "name": "recon_cmd_b",
-            "prefix_get": "captured_folder_colname",
-            "prefix_put": "captured_folder_colname",
-            "put_condition": "recon_cmd_a"
-        },
-        {
-            "name": "recon_cmd_c",
-            "prefix_get": "captured_folder_colname",
-            "prefix_put": "captured_folder_colname",
-            "put_condition": "recon_cmd_b"
-        },
-    ]
-}
+```yaml
+rules:
+
+    - rulename: rule6
+      description: >
+        ordered list of events by host and for particular context key
+        for example the a regex applied to a file path could capture
+        a folder name and store that value under captured_folder_colname
+        The flux capacitor will propagate the tags seen for folder XYZ
+        to all subsequent rows which have a captured_folder_colname of XYZ
+      action: temporal
+      ordered: true
+      groupby:
+        - captured_folder_colname
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
 
 ```
 
 Example 2: un-ordered temporal rules recon_cmd_a, recon_cmd_b, recon_cmd_c
 We don't need to remember recon_cmd_c, so we omit it from the update specification
 
-```json
-{
-    "rule_name": "rule2"
-    "tags": [
-        {
-            "name": "recon_cmd_a",
-            "prefix_get": "captured_folder_colname",
-            "prefix_put": "captured_folder_colname"
-        },
-        {
-            "name": "recon_cmd_b",
-            "prefix_get": "captured_folder_colname",
-            "prefix_put": "captured_folder_colname"
-        },
-    ]
-}
-```
 
 Example 3: infinit ancestor
 
-```json
-{    
-    "rule_name": "rule3"
-    "tags": [
-        {
-            "name": "selection_parent",
-            "prefix_get": "parent_process_id",
-            "prefix_put": "process_id",
-            "put_condition": "selection_parent"
-        },
-    ]
-}
+```yaml
+rules:
+    
+    - rulename: rule3
+      description: propagate to all decendents
+      action: ancestor
+      tags:
+        - name: ancestor_process_feature1
+      parent: parent_id
+      child: id
+
+
 ```
 
 Example 4: just check parent
-```json
-{
-    "rule_name": "rule4"
-    "tags": [
-        {
-            "name": "selection_parent",
-            "prefix_get": "parent_process_id",
-            "prefix_put": "process_id"
-        },
-    ]
-}
+```yaml
+rules:
+    - rulename: rule4
+      description: propagate to child only
+      action: parent
+      parent: parent_id
+      child: id
+      tags:
+        - name: parent_process_feature1
+
 ```
 
 Example 5: un-ordered temporal rules, no prefix keys. Context is the entire machine.
 
-```json
-{
-    "rule_name": "rule5"
-    "tags": [
-        {
-            "name": "recon_cmd_a",
-        },
-        {
-            "name": "recon_cmd_b",
-        },
-        {
-            "name": "recon_cmd_c",
-        },
-    ]
-}
+```yaml
+rules:
+    - rulename: rule1
+      description: ordered list of events by host
+      action: temporal
+      ordered: true
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
 ```
 
+```yaml
+rules:
+
+    - rulename: rule5
+      description: un-ordered set of events by host
+      action: temporal
+      ordered: false
+      tags:
+        - name: recon_cmd_a
+        - name: recon_cmd_b
+        - name: recon_cmd_c
+
+```
 
 
 
