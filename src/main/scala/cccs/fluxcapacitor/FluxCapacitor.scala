@@ -23,8 +23,7 @@ case class FluxCapacitorMapFunction(
     var timestampIndex = orderedRows.iterator.next().fieldIndex("timestamp")
     var startSort = System.currentTimeMillis()
     val sorted = orderedRows.sortWith((r1: Row, r2: Row) =>
-      r1.getTimestamp(timestampIndex)
-        .compareTo(r2.getTimestamp(timestampIndex)) <= 0
+      r2.getTimestamp(timestampIndex).getTime() > r1.getTimestamp(timestampIndex).getTime()
     )
     var endSort = System.currentTimeMillis()
     log.debug(

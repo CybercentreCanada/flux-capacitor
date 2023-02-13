@@ -10,6 +10,7 @@ import org.apache.spark.sql.Row
 import scala.collection.Map
 import cccs.fluxcapacitor.RulesConf.TagMap
 import cccs.fluxcapacitor.RulesConf.SigmaMap
+import cccs.fluxcapacitor.tag.DefaultTag
 
 class Rule(ruleConf: RuleConf, tagCache: TagCache) {
   val log = Logger.getLogger(this.getClass)
@@ -67,16 +68,36 @@ class Rule(ruleConf: RuleConf, tagCache: TagCache) {
 
   def evaluateRow(row: Row, sigmaResults: SigmaMap): TagMap = {
     if (log.isTraceEnabled) log.trace(s"evaluating rule in this order ${ruleConf.rulename}")
-    getEvaluators(sigmaResults)
-      .map({ case (tagName, evaluator) =>
-        if (log.isTraceEnabled) log.trace(s"Evaluating tag: $tagName")
-        val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
-        val value = tagValuesMap.getOrElse(tagName, false)
-        evaluator.setCurrentValue(value)
-        var retValue = evaluator.evaluateRow(row)
-        if (log.isTraceEnabled) log.trace(s"Tag: $tagName evaluated current value: $retValue")
-        (tagName -> retValue)
-      })
-      .toMap
+    val tagValuesMap = sigmaResults.getOrElse(ruleConf.rulename, Map.empty)
+    var shouldEval = true
+    if (ruleConf.action == "temporal") {
+      val allTemporalAreFalse = getEvaluators(sigmaResults)
+        .map({ case (tagName, evaluator) =>
+          if (evaluator.isInstanceOf[TransitoryTag]) {
+            false
+          }
+          else {
+            tagValuesMap.getOrElse(tagName, false)
+          }
+        })
+        .forall(_ == false)
+      shouldEval = !allTemporalAreFalse
+    }
+
+    if (shouldEval) {
+      getEvaluators(sigmaResults)
+        .map({ case (tagName, evaluator) =>
+          if (log.isTraceEnabled) log.trace(s"Evaluating tag: $tagName")
+          val value = tagValuesMap.getOrElse(tagName, false)
+          evaluator.setCurrentValue(value)
+          var retValue = evaluator.evaluateRow(row)
+          if (log.isTraceEnabled) log.trace(s"Tag: $tagName evaluated current value: $retValue")
+          (tagName -> retValue)
+        })
+        .toMap
+    }
+    else {
+        tagValuesMap
+    }
   }
 }
