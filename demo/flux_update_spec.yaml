@@ -1,0 +1,57 @@
+rules:
+    - rulename: rule1
+      description: proc_creation_win_run_executable_invalid_extension
+      action: ancestor
+      tags:
+        - name: pr1_filter_iexplorer
+        - name: pr1_filter_msiexec_syswow64
+        - name: pr1_filter_msiexec_system32
+      parent: parent_id
+      child: id
+    
+    - rulename: rule2
+      description: proc_creation_win_susp_conhost
+      action: ancestor
+      tags:
+        - name: pr2_selection
+        - name: pr2_filter_git
+      parent: parent_id
+      child: id
+
+    - rulename: rule3
+      description: proc_creation_win_impacket_lateralization
+      action: parent
+      tags:
+        - name: pr3_selection_other
+        - name: pr3_selection_atexec
+      parent: parent_id
+      child: id
+
+    - rulename: integration_test_parent
+      action: parent
+      tags:
+        - name: a
+        - name: b
+      parent: parent_id
+      child: id
+    - rulename: integration_test_ancestor
+      action: ancestor
+      tags:
+        - name: a
+        - name: b
+      parent: parent_id
+      child: id
+    - rulename: integration_test_temporal
+      action: temporal
+      ordered: false
+      tags:
+        - name: a
+        - name: b
+        - name: c
+    - rulename: integration_test_temporal_ordered
+      action: temporal
+      ordered: true
+      tags:
+        - name: a
+        - name: b
+        - name: c
