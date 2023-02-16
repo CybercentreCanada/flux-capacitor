@@ -8,7 +8,7 @@ select
   uuid() as detection_id,
   timestamp as detection_ts, 
   host_id as detection_host, 
-  explode(map_keys(map_filter(sigma_final, (k,v) -> v = TRUE))) as detection_rule_name
+  explode(sigma_final) as detection_rule_name
 from
   global_temp.post_flux_eval_condition
 )
