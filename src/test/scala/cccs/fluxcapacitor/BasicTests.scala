@@ -22,7 +22,7 @@ import org.apache.spark.sql.Row
 class BasicTests extends AnyFunSuite with BeforeAndAfter {
 
   val log = Logger.getLogger(this.getClass)
-  var rowSchema: StructType = StructType.fromDDL("""|id string, 
+  val rowSchema: StructType = StructType.fromDDL("""|id string, 
                                                     |parent_id string, 
                                                     |sigma map<string, map<string, boolean>>, 
                                                     |captured_folder_colname string
@@ -31,7 +31,7 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
   var tagCache : MapTagCache = _
 
   //new MapTagCache
-  var rules = new Rules(loadYamlSpecification("rule5.yaml"), tagCache)
+  var rules: Rules = _
 
   val rule1 = scala.collection.immutable.Map(
     "recon_cmd_a" -> false,
@@ -221,6 +221,11 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
       in("rule5.recon_cmd_c"),
       out("rule5.recon_cmd_a", "rule5.recon_cmd_b", "rule5.recon_cmd_c")
     )
+    processRow(
+      in("rule5.recon_cmd_d"),
+      out("rule5.recon_cmd_d")
+    )
+  
   }
 
   test("un-ordered set of events by host, with repeats") {
@@ -280,12 +285,15 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
     // finally we saw c, it is stored and the output shows all tags were seen in
     // ordered.
     processRow(
+      in("rule1.recon_cmd_c"),
+      out("rule1.recon_cmd_a", "rule1.recon_cmd_b", "rule1.recon_cmd_c")
+    )
+    // none of the temporal tags (a,b,c) are on the input row, 
+    // the flux capacitor skips evaluation of these rows
+    processRow(
       in("rule1.recon_cmd_d"),
       out(
-        "rule1.recon_cmd_a",
-        "rule1.recon_cmd_b",
-        "rule1.recon_cmd_c",
-        "rule1.recon_cmd_d"
+        "rule1.recon_cmd_d"      
       )
     )
   }
@@ -314,12 +322,11 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
       in("rule1.recon_cmd_b", "rule1.recon_cmd_c"),
       out("rule1.recon_cmd_a", "rule1.recon_cmd_b", "rule1.recon_cmd_c")
     )
+    // none of the temporal tags (a,b,c) are on the input row, 
+    // the flux capacitor skips evaluation of these rows
     processRow(
       in("rule1.recon_cmd_d"),
       out(
-        "rule1.recon_cmd_a",
-        "rule1.recon_cmd_b",
-        "rule1.recon_cmd_c",
         "rule1.recon_cmd_d"
       )
     )
@@ -480,12 +487,11 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
     )
     // finally we saw c, it is stored and the output shows all tags were seen in
     // ordered.
+    // none of the temporal tags (a,b,c) are on the input row, 
+    // the flux capacitor skips evaluation of these rows
     processRow(
       in("rule6.recon_cmd_d"),
       out(
-        "rule6.recon_cmd_a",
-        "rule6.recon_cmd_b",
-        "rule6.recon_cmd_c",
         "rule6.recon_cmd_d"
       ),
       capturedValue = "folderA"
@@ -518,9 +524,6 @@ class BasicTests extends AnyFunSuite with BeforeAndAfter {
     processRow(
       in("rule6.recon_cmd_d"),
       out(
-        "rule6.recon_cmd_a",
-        "rule6.recon_cmd_b",
-        "rule6.recon_cmd_c",
         "rule6.recon_cmd_d"
       ),
       capturedValue = "folderB"
