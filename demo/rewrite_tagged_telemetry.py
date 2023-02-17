@@ -1,9 +1,10 @@
 from datetime import datetime
 import sys
-from experiment_agg_bloom import init_argparse
+import time
 import util
 from util import (
     get_spark,
+    init_argparse,
     create_spark_session,
     
 )
@@ -39,7 +40,9 @@ def start_rewrite(args):
 
 def main() -> int:
     args = init_argparse()
-    start_rewrite(args)
+    while True:
+        start_rewrite(args)
+        time.sleep(60 * 60)
     return 0
     
 if __name__ == "__main__":

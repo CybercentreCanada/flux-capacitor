@@ -9,7 +9,7 @@ def start_query(args):
     (
         get_spark().readStream
         .format("rate")
-        .option("rowsPerSecond", 5000)
+        .option("rowsPerSecond", 10000)
         .load()
         .selectExpr('value', '(value+100000)/5000 as ts')
         .createOrReplaceTempView("rate_view")

@@ -152,7 +152,7 @@ def read_flux_update_spec():
 def flux_capacitor(input_df):
     """Python function to invoke the scala code"""
     spec = read_flux_update_spec()
-    bloom_capacity = 100000
+    bloom_capacity = 200000
     spark = get_spark()
     flux_stateful_function = spark._sc._jvm.cccs.fluxcapacitor.FluxCapacitor.invoke
     # distribute processing of each host by this key
