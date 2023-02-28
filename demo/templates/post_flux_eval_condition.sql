@@ -1,7 +1,7 @@
 select
     *,
-    map_keys(
-    map_filter(
+    map_keys( -- only keep the rule names of rules that evaluted to true
+    map_filter( -- filter map entries keeping only rules that evaluated to true
     map( -- store each resulting rule into its corresponding rule's map
         'rule1', 
         -- rule 1 -> condition: selection and not 1 of filter*
