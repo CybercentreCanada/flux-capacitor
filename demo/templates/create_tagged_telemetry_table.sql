@@ -5,4 +5,4 @@ create table {{tagged_telemetry_table}} (
   sigma_pre_flux map<string, map<string, boolean>>
 )
 using iceberg
-PARTITIONED BY (hours(timestamp), bucket(256, host_id))
+PARTITIONED BY (days(timestamp), bucket(1000, host_id))

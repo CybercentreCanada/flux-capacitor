@@ -50,6 +50,7 @@ telemetry_columns = """
 """
 
 catalog = ""
+schema = ""
 tagged_telemetry_table_only = ""
 tagged_telemetry_table = ""
 
@@ -70,7 +71,7 @@ def init_argparse() -> argparse.Namespace:
 
     args = parser.parse_args()
     
-    global scheam
+    global schema
     global catalog
     global tagged_telemetry_table_only
     
@@ -104,16 +105,17 @@ def init_argparse() -> argparse.Namespace:
 
 
 
-def create_spark_session(name, num_machines):
+def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15):
     (
     SparkSession.builder.master(master_uri)
     .appName(name)
-    .config("spark.sql.shuffle.partitions", 15)
-    .config("spark.executor.memory", "35g")
-    .config("spark.driver.memory", "1g")
+    .config("spark.sql.shuffle.partitions", shuffle_partitions)
+    .config("spark.executor.memory", "40g")
+    .config("spark.driver.memory", "2g")
     .config("spark.driver.cores", "1")
-    .config("spark.executor.cores", 15)
-    .config("spark.cores.max", 15 * num_machines)
+    .config("spark.executor.cores", cpu_per_machine)
+    .config("spark.dynamicAllocation.enabled", False)
+    .config("spark.cores.max", cpu_per_machine * num_machines)
     .config("spark.jars", "../target/flux-capacitor-1.jar")
     .getOrCreate()
     )
@@ -161,11 +163,6 @@ def flux_capacitor(input_df):
     df.createOrReplaceGlobalTempView("flux_capacitor_output")
     return df
 
-def print_anomalies(msg, df):
-    print(msg)
-    df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline').show(truncate=False)
-
-
 def print_telemetry(msg, df):
     print(msg)
     df.select(
@@ -176,16 +173,27 @@ def print_telemetry(msg, df):
         "sigma.integration_test_ancestor",
         "sigma.integration_test_temporal",
         "sigma.integration_test_temporal_ordered",
-    ).show(truncate=False)
+    ).orderBy("timestamp").show(truncate=False)
+
+
+def print_anomalies(msg, df):
+    print(msg)
+    (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
+    .orderBy("timestamp")
+    .show(truncate=False)
+    )
 
 def print_final_results(msg, df):
     print(msg)
-    df.select(
+    (df.select(
         "id",
         "parent_id",
         "Commandline",
         "sigma_final",
-    ).show(truncate=False)
+    )
+    .orderBy("timestamp")
+    .show(truncate=False)
+    )
 
 def get_spark():
     return SparkSession.getActiveSession()

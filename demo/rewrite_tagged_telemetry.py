@@ -10,32 +10,35 @@ from util import (
 )
 
 def start_rewrite(args):
-    create_spark_session("rewrite tagged telemetry", 1)
+    create_spark_session("rewrite tagged telemetry", 2, cpu_per_machine=30, shuffle_partitions=100)
 
-    max_partition = get_spark().sql(f"""
-        select
-            max(partition.timestamp_hour) as hour
-        from
-            {util.tagged_telemetry_table}.files
-    """).take(1)[0].hour
+    # max_hour = get_spark().sql(f"""
+    #     select
+    #         date_trunc('HOUR', max(timestamp)) as hour
+    #     from
+    #         {util.tagged_telemetry_table}
+    # """).collect()[0].hour
 
-    print(f"max partition hour: {max_partition}")
+    # if max_hour is not None:
+    #     print(max_hour)
+    #     print(f"max time: {max_hour}")
 
-    for h in range(0, max_partition):
-        partition = datetime.fromtimestamp(h * 60 * 60).strftime("%Y-%m-%d %H:%M:%S")
-        print(partition)
-        sql = f"""
-        CALL {util.catalog}.system.rewrite_data_files(
-                table => '{util.schema}.{util.tagged_telemetry_table_only}',
-                strategy => 'sort', 
-                sort_order => 'host_id',
-                where => 'timestamp >= TIMESTAMP \\'{partition}\\'
-                    AND timestamp < TIMESTAMP \\'{partition}\\' + INTERVAL 1 HOUR'
-            )
-        """
+    max_hour = "2222-01-01 00:00:00"
 
-        print(sql)
-        get_spark().sql(sql).show()
+    sql = f"""
+    CALL {util.catalog}.system.rewrite_data_files(
+            table => '{util.schema}.{util.tagged_telemetry_table_only}',
+            strategy => 'sort', 
+            sort_order => 'host_id, id',
+            options => map('max-concurrent-file-group-rewrites', '30',
+                           'partial-progress.enabled', 'true'),
+            where => 'timestamp >= TIMESTAMP \\'1970-01-01 00:00:00\\'
+                AND timestamp < TIMESTAMP \\'{max_hour}\\' '
+        )
+    """
+
+    print(sql)
+    get_spark().sql(sql).show()
 
 
 def main() -> int:

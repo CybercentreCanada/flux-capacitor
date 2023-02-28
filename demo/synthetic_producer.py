@@ -8,10 +8,10 @@ def start_query(args):
 
     (
         get_spark().readStream
-        .format("rate")
-        .option("rowsPerSecond", 10000)
+        .format("rate-micro-batch")
+        .option("rowsPerBatch", 500000)
+        .option("startTimestamp", 1677533657000)
         .load()
-        .selectExpr('value', '(value+100000)/5000 as ts')
         .createOrReplaceTempView("rate_view")
     )
 
