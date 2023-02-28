@@ -3,6 +3,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import SparkSession
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import argparse
+import os
 
 master_uri = "spark://ver-1-spark-master-svc.spark:7077"
 telemetry_schema = {
@@ -120,11 +121,12 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .getOrCreate()
     )
 
-
-
-
 def fullPath(name):
-    return f"./templates/{name}.sql"
+    fname = f"./templates/static/{name}.sql"
+    if os.path.isfile(fname): 
+        return fname
+    fname = f"./templates/generated/{name}.sql"
+    return fname
 
 def render(name):
     template = jinja_env.get_template(fullPath(name))
