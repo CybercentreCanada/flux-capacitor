@@ -1,12 +1,14 @@
 import sys
 import time
-import util
+from constants import init_argparse
+import constants
 from util import (
-    init_argparse,
     get_checkpoint_location,
     get_spark,
     create_spark_session,
-    global_view,
+    create_view,
+    make_name,
+    monitor_query,
     print_anomalies,
     validate_events,
     store_alerts
@@ -14,11 +16,13 @@ from util import (
 
 
 def find_temporal_proximity(anomalies):
-    anomalies.createOrReplaceGlobalTempView("anomalies")
     temporal_anomalies = anomalies.where("detection_action = 'temporal'")
-    if temporal_anomalies.count() == 0:
+    temporal_anomalies.createOrReplaceGlobalTempView("anomalies")
+    num_temporal = temporal_anomalies.count()
+    if num_temporal == 0:
         return temporal_anomalies
-    return get_spark().sql(f"""
+    print(f"number of temporal proxity anomalies to validate {num_temporal}")
+    rendered_sql = f"""
         select
             e.*,
             a.detection_id,
@@ -28,12 +32,14 @@ def find_temporal_proximity(anomalies):
             a.detection_action            
         from
             global_temp.anomalies as a
-            join {util.tagged_telemetry_table} as e 
+            join {constants.tagged_telemetry_table} as e 
             on a.detection_host = e.host_id
         where
             a.detection_action = 'temporal'
             and array_contains(map_values(e.sigma_pre_flux[a.detection_rule_name]), TRUE)
-        """)
+        """
+    print(rendered_sql)
+    return get_spark().sql(rendered_sql)
 
 def start_query(args):
     create_spark_session("streaming temporal proximity alert builder", 1)
@@ -47,10 +53,10 @@ def start_query(args):
         .format("iceberg")
         .option("stream-from-timestamp", ts)
         .option("streaming-skip-delete-snapshots", True)
-        .load(util.suspected_anomalies_table)
+        .load(constants.suspected_anomalies_table)
     )
 
-    global_view("sigma_rule_to_action")
+    create_view("sigma_rule_to_action")
 
     def foreach_batch_function(anomalies, epoch_id):
         anomalies.persist()
@@ -70,16 +76,17 @@ def start_query(args):
         .writeStream
         .queryName("temporal_proximity")
         .trigger(processingTime=f"{args.trigger} seconds")
-        .option("checkpointLocation", get_checkpoint_location(util.alerts_table) + "_temporal_proximity")
+        .option("checkpointLocation", get_checkpoint_location(constants.alerts_table) + "_temporal_proximity")
         .foreachBatch(foreach_batch_function)
         .start()
     )
 
-    streaming_query.awaitTermination()
+    monitor_query(streaming_query, args.name)
 
 
 def main() -> int:
     args = init_argparse()
+    args.name = make_name(args, __file__)
     start_query(args)
     return 0
     

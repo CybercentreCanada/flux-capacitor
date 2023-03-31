@@ -1,1 +1,0 @@
-INSERT INTO {{tagged_telemetry_table}} select * from final_output

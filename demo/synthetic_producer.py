@@ -1,41 +1,54 @@
-import util
+import constants
+import time
 
-from util import init_argparse, run, get_checkpoint_location, create_spark_session, get_spark
+from constants import init_argparse
+from util import (
+    make_name,
+    monitor_query,
+    get_checkpoint_location,
+    create_spark_session,
+    get_spark,
+    create_dataframe,
+)
 import sys
+
 
 def start_query(args):
     create_spark_session("streaming synthetic producer", 1)
 
+    # current time in milliseconds
+    ts = int(time.time() * 1000)
+
     (
-        get_spark().readStream
-        .format("rate-micro-batch")
-        .option("rowsPerBatch", 500000)
-        .option("startTimestamp", 1677533657000)
+        get_spark()
+        .readStream.format("rate-micro-batch")
+        .option("rowsPerBatch", 60 * 2000)
+        .option("startTimestamp", ts)
         .load()
         .createOrReplaceTempView("rate_view")
     )
 
-    df = run("generate_synthetic_telemetry")
+    df = create_dataframe("generate_synthetic_telemetry")
 
     streaming_query = (
-        df.writeStream
-        .format("iceberg")
+        df.writeStream.format("iceberg")
         .queryName("synthetic producer")
         .outputMode("append")
         .trigger(processingTime=f"{args.trigger} seconds")
-        .option("path", util.process_telemetry_table)
-        .option("checkpointLocation", get_checkpoint_location(util.process_telemetry_table))
+        .option("path", constants.process_telemetry_table)
+        .option("checkpointLocation", get_checkpoint_location(constants.process_telemetry_table))
         .start()
     )
 
-    streaming_query.awaitTermination()
+    monitor_query(streaming_query, args.name)
 
 
 def main() -> int:
     args = init_argparse()
+    args.name = make_name(args, __file__)
     start_query(args)
     return 0
-    
+
+
 if __name__ == "__main__":
     sys.exit(main())
-

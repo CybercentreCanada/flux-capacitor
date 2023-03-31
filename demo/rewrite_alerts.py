@@ -1,6 +1,6 @@
 import sys
 import time
-from constants import init_argparse
+import util
 import constants
 from util import (
     get_spark,
@@ -9,14 +9,14 @@ from util import (
 )
 
 def start_rewrite(args):
-    create_spark_session("rewrite tagged telemetry", num_machines=1, cpu_per_machine=30, shuffle_partitions=100)
+    create_spark_session("rewrite alerts", num_machines=1, cpu_per_machine=30, shuffle_partitions=100)
 
     max_hour = "2222-01-01 00:00:00"
 
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
-            table => '{constants.tagged_telemetry_table}',
-            strategy => 'binpack', 
+            table => '{util.schema}.{constants.alerts_table}',
+            strategy => 'binpack',
             options => map('max-concurrent-file-group-rewrites', '30',
                            'partial-progress.enabled', 'true'),
             where => 'timestamp >= TIMESTAMP \\'1970-01-01 00:00:00\\'
@@ -29,7 +29,7 @@ def start_rewrite(args):
 
 
 def main() -> int:
-    args = init_argparse()
+    args = constants.init_argparse()
     while True:
         start_rewrite(args)
         time.sleep(2 * 60 * 60)

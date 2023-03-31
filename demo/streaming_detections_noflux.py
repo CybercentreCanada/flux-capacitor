@@ -16,7 +16,7 @@ import time
 import sys
 
 def start_query(args):
-    create_spark_session("streaming anomaly detections", 1)
+    create_spark_session("streaming anomaly detections",  num_machines=1, cpu_per_machine=15, shuffle_partitions=200)
 
     create_view("sigma_rule_to_action")
 
@@ -36,7 +36,9 @@ def start_query(args):
     # Step 1: Evaluate discrete tags (pattern match)
     df = create_dataframe("pre_flux_tagged_telemetry")
     # Step 2: Time travel tags
-    flux_capacitor(df)
+    #flux_capacitor(df)
+    df = df.withColumn("sigma", df.sigma_pre_flux)
+    df.createOrReplaceGlobalTempView("flux_capacitor_output")
     # Step 3: Final evaluation of sigma rule
     # Now that we have the historical tags (for example parent tags)
     # we can evaluate rules which combine tags from the current row and its parent
@@ -55,7 +57,7 @@ def start_query(args):
         .writeStream
         .queryName("detections")
         .trigger(processingTime=f"{args.trigger} seconds")
-        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table))
+        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table) + "noflux2")
         .foreachBatch(foreach_batch_function)
         .start()
     )

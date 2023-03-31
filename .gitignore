@@ -1,12 +1,15 @@
+__pycache__
 .vscode
 target
 .ipynb_checkpoints
 *.log
 core-site.xml
 telemetry
+logs/
 
 .metals
 .bloop
 .bsp
 
 experiments
+runall.sh

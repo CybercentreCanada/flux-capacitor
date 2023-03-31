@@ -1,114 +1,23 @@
-from typing import Dict
 from pyspark.sql import DataFrame
 from pyspark.sql import SparkSession
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-import argparse
 import os
+import time
+import json
+import constants
 
-master_uri = "spark://ver-1-spark-master-svc.spark:7077"
-telemetry_schema = {
-    'timestamp': 'timestamp',
-    'host_id': 'string',
-    'id': 'string',
-    'parent_id': 'string',
-    'captured_folder_colname': 'string',
-    'Name': 'string',
-    'ImagePath': 'string',
-    'Commandline': 'string'
-}
-telemetry_columns = """
-    timestamp,
-    host_id,
-    id,
-    parent_id,
-    captured_folder_colname,
-    Name,
-    ImagePath,
-    Commandline
-"""
 
 jinja_env = Environment(loader=FileSystemLoader("."), autoescape=select_autoescape())
 
-telemetry_schema = {
-    'timestamp': 'timestamp',
-    'host_id': 'string',
-    'id': 'string',
-    'parent_id': 'string',
-    'captured_folder_colname': 'string',
-    'Name': 'string',
-    'ImagePath': 'string',
-    'Commandline': 'string'
-}
-telemetry_columns = """
-    timestamp,
-    host_id,
-    id,
-    parent_id,
-    captured_folder_colname,
-    Name,
-    ImagePath,
-    Commandline
-"""
 
-catalog = ""
-schema = ""
-tagged_telemetry_table_only = ""
-tagged_telemetry_table = ""
-
-process_telemetry_table = ""
-suspected_anomalies_table = ""
-alerts_table : str = ""
-template_vars : Dict[str, str] = {}
-
-
-def init_argparse() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        usage="%(prog)s [OPTION] [FILE]...",
-        description="Description here"
-    )
-    parser.add_argument('--trigger', type=int, required=False, default=60)
-    parser.add_argument('--catalog', type=str, required=True)
-    parser.add_argument('--schema', type=str, required=True)
-
-    args = parser.parse_args()
-    
-    global schema
-    global catalog
-    global tagged_telemetry_table_only
-    
-    global process_telemetry_table
-    global tagged_telemetry_table
-    global suspected_anomalies_table
-    global alerts_table
-
-    schema = args.schema
-    catalog = args.catalog
-
-    tagged_telemetry_table_only = "tagged_telemetry_table"
-    tagged_telemetry_table = f"{catalog}.{schema}.{tagged_telemetry_table_only}"
-    process_telemetry_table = f"{catalog}.{schema}.process_telemetry_table"
-    suspected_anomalies_table = f"{catalog}.{schema}.suspected_anomalies"
-    alerts_table = f"{catalog}.{schema}.alerts"
-
-    global template_vars
-    template_vars = {
-        "suspected_anomalies_table": suspected_anomalies_table,
-        "tagged_telemetry_table":tagged_telemetry_table,
-        "process_telemetry_table": process_telemetry_table,
-        "alerts_table": alerts_table,
-        "telemetry_schema": telemetry_schema,
-        "telemetry_columns": telemetry_columns
-        }
-    return args
-
-
-
-
-
+def make_name(args, filename):
+    basename = os.path.basename(filename)
+    basename = basename.replace(".py", "")
+    return f"{basename}__{args.schema}_t{args.trigger}"
 
 def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15):
     (
-    SparkSession.builder.master(master_uri)
+    SparkSession.builder.master(constants.master_uri)
     .appName(name)
     .config("spark.sql.shuffle.partitions", shuffle_partitions)
     .config("spark.executor.memory", "40g")
@@ -118,6 +27,10 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .config("spark.dynamicAllocation.enabled", False)
     .config("spark.cores.max", cpu_per_machine * num_machines)
     .config("spark.jars", "../target/flux-capacitor-1.jar")
+    .config("spark.sql.streaming.stateStore.providerClass", 
+        "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
+    .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
+    .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     .getOrCreate()
     )
 
@@ -130,26 +43,29 @@ def fullPath(name):
 
 def render(name):
     template = jinja_env.get_template(fullPath(name))
-    rendered_sql = template.render(template_vars)
+    rendered_sql = template.render(constants.template_vars)
     return rendered_sql
 
 def run(name) -> DataFrame:
     return get_spark().sql(render(name))
 
+def create_dataframe(name) -> DataFrame:
+    return get_spark().sql(render(name))
 
-def global_view(name):
+
+def create_view(name):
     df = run(name)
     df.createOrReplaceGlobalTempView(name)
     return df
 
 def persisted_view(name):
-    global_view(name).persist()
+    create_view(name).persist()
 
 def drop(tname):
     get_spark().sql(f"drop table if exists {tname}")  
     
 def read_flux_update_spec():
-    with open("./flux_update_spec.yaml", "r") as f:
+    with open("./templates/generated/flux_update_spec.yaml", "r") as f:
         flux_update_spec = f.read()
     return flux_update_spec
 
@@ -211,20 +127,52 @@ def get_checkpoint_location(table_name):
     return checkpoint_location
 
 def store_alerts(df):
-    df.writeTo(alerts_table).append()
+    df.writeTo(constants.alerts_table).append()
 
 def store_tagged_telemetry(df):
-    columns = list(telemetry_schema.keys())
+    columns = list(constants.telemetry_schema.keys())
     columns.append("sigma_pre_flux")
-    df.select(columns).writeTo(tagged_telemetry_table).append()
+    df.select(columns).writeTo(constants.tagged_telemetry_table).append()
 
 def validate_events(df):
+    # the incoming dataframe contains the event rows to validate
+    # we skip re-evaluating the pre-flux patterns and instead use the stored sigma_pre_flux tags
     df = df.withColumn("sigma", df.sigma_pre_flux).drop("sigma_final")
+    df.createOrReplaceGlobalTempView("events_to_validate")
+    # we re-apply time travel
     flux_capacitor(df)
-    (
-        run("post_flux_eval_condition")
-        .where("array_contains(sigma_final, detection_rule_name)")
-        .selectExpr("detection_id")
-        .createOrReplaceGlobalTempView("validated_detections")
-    )
-    return df.where("detection_id in (select * from global_temp.validated_detections)")
+    # and re-apply the post-flux conditions
+    #post_df = 
+    create_view("post_flux_eval_condition")
+    # The incomming df contains a detection_id column
+    # determine which detection_id are validated
+    # and use this list of validated detection ids to filer the incoming event rows
+    return get_spark().sql("""
+        select
+            *
+        from
+            global_temp.events_to_validate
+        where
+            detection_id in (
+                select
+                    detection_id
+                from
+                    global_temp.post_flux_eval_condition
+                where
+                    array_contains(sigma_final, detection_rule_name)
+            )
+    """)
+
+def write_metrics(name, metric):
+    os.makedirs("telemetry", exist_ok=True)
+    with open(f"telemetry/{name}.log.json", "a") as f:
+        f.write(json.dumps(metric) + '\n')
+
+def monitor_query(query, name):
+    batchId = -1
+    while(True):
+        time.sleep(1)
+        if query.lastProgress:
+            if batchId != query.lastProgress['batchId']:
+                batchId = query.lastProgress['batchId']
+                write_metrics(name, query.lastProgress)
