@@ -9,18 +9,20 @@ from util import (
 )
 
 def start_rewrite(args):
-    create_spark_session("rewrite tagged telemetry", num_machines=1, cpu_per_machine=30, shuffle_partitions=100)
+    create_spark_session("rewrite tagged telemetry", num_machines=1)
 
-    max_hour = "2222-01-01 00:00:00"
+    min_ts = "2020-01-01 00:00:00"
+    max_ts = "2028-01-01 00:00:00"
 
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
             table => '{constants.tagged_telemetry_table}',
-            strategy => 'binpack', 
-            options => map('max-concurrent-file-group-rewrites', '30',
+            strategy => 'sort',
+            sort_order => 'host_id',
+            options => map('min-input-files', '100',
+                           'max-concurrent-file-group-rewrites', '30',
                            'partial-progress.enabled', 'true'),
-            where => 'timestamp >= TIMESTAMP \\'1970-01-01 00:00:00\\'
-                AND timestamp < TIMESTAMP \\'{max_hour}\\' '
+            where => 'timestamp >= TIMESTAMP \\'{min_ts}\\' AND timestamp < TIMESTAMP \\'{max_ts}\\' '
         )
     """
 
@@ -30,9 +32,16 @@ def start_rewrite(args):
 
 def main() -> int:
     args = init_argparse()
-    while True:
-        start_rewrite(args)
-        time.sleep(2 * 60 * 60)
+    start_rewrite(args)
+
+    # calling the store procedure in a loop causes it to not detect files to compact
+    # if you re-start the spark job then it works, seems like there is a bug in iceberg's
+    # procedure?
+    
+    # while True:
+    #     start_rewrite(args)
+    #     print(f"sleeping for {args.trigger}", flush=True)
+    #     time.sleep(args.trigger)
     return 0
     
 if __name__ == "__main__":

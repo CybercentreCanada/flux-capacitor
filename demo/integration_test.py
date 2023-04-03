@@ -3,12 +3,12 @@ import sys
 from streaming_proximity_alert_builder import find_temporal_proximity
 from streaming_parent_alert_builder import find_parents
 from streaming_ancestor_alert_builder import find_ancestors
+import constants
 import util
 from util import (
     create_view,
     get_spark,
     create_spark_session,
-    init_argparse,
     render,
     validate_events,
     store_tagged_telemetry,
@@ -23,10 +23,10 @@ from util import (
 
 
 def create_or_replace_tables(args):
-    drop(util.tagged_telemetry_table)
-    drop(util.process_telemetry_table)
-    drop(util.suspected_anomalies_table)
-    drop(util.alerts_table)
+    drop(constants.tagged_telemetry_table)
+    drop(constants.process_telemetry_table)
+    drop(constants.suspected_anomalies_table)
+    drop(constants.alerts_table)
     run("create_tagged_telemetry_table")
     run("create_process_telemetry_table")
     run("create_suspected_anomalies_table")
@@ -36,7 +36,7 @@ def create_or_replace_tables(args):
 
 def run_detections(args):
     print("The telemetry table consists of Windows start-process events:")
-    df = get_spark().table(util.process_telemetry_table)
+    df = get_spark().table(constants.process_telemetry_table)
     df.select("timestamp", "id", "parent_id", "Commandline").orderBy("timestamp").show(truncate=False)
     df.createOrReplaceTempView("process_telemetry_view")
 
@@ -67,7 +67,7 @@ def run_detections(args):
 
 
 def run_parents_alert_builder(args):
-    anomalies = get_spark().table(util.suspected_anomalies_table)
+    anomalies = get_spark().table(constants.suspected_anomalies_table)
     anomalies.persist()
     print_anomalies("suspected anomalies queue:", anomalies)
     create_view("sigma_rule_to_action")
@@ -82,7 +82,7 @@ def run_parents_alert_builder(args):
 
 
 def run_ancestors_alert_builder(args):
-    anomalies = get_spark().table(util.suspected_anomalies_table)
+    anomalies = get_spark().table(constants.suspected_anomalies_table)
     anomalies.persist()
     print_anomalies("suspected anomalies queue:", anomalies)
     create_view("sigma_rule_to_action")
@@ -96,7 +96,7 @@ def run_ancestors_alert_builder(args):
     anomalies.unpersist()
 
 def run_temporal_proximity_alert_builder(args):
-    anomalies = get_spark().table(util.suspected_anomalies_table)
+    anomalies = get_spark().table(constants.suspected_anomalies_table)
     anomalies.persist()
     print_anomalies("suspected anomalies queue:", anomalies)
     create_view("sigma_rule_to_action")
@@ -114,7 +114,7 @@ def run_temporal_proximity_alert_builder(args):
 
 
 def main() -> int:
-    args = init_argparse()
+    args = constants.init_argparse()
     create_spark_session("integration test", 1)
     print("\n\n================ create_or_replace_tables =======================")
     create_or_replace_tables(args)

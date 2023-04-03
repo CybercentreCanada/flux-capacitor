@@ -18,12 +18,13 @@ def start_query(args):
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
-
+    print(f"starting at time: {ts}, tigger at every {args.trigger} seconds and advancing {args.trigger * 1000} milliseconds per batch", flush=True)
     (
         get_spark()
         .readStream.format("rate-micro-batch")
-        .option("rowsPerBatch", 60 * 2000)
+        .option("rowsPerBatch", 60 * 5000)
         .option("startTimestamp", ts)
+        .option("advanceMillisPerBatch", args.trigger * 1000)
         .load()
         .createOrReplaceTempView("rate_view")
     )

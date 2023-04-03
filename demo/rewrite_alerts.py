@@ -9,7 +9,7 @@ from util import (
 )
 
 def start_rewrite(args):
-    create_spark_session("rewrite alerts", num_machines=1, cpu_per_machine=30, shuffle_partitions=100)
+    create_spark_session("rewrite alerts", 1)
 
     max_hour = "2222-01-01 00:00:00"
 
@@ -32,7 +32,8 @@ def main() -> int:
     args = constants.init_argparse()
     while True:
         start_rewrite(args)
-        time.sleep(2 * 60 * 60)
+        print(f"sleeping for {args.trigger}", flush=True)
+        time.sleep(args.trigger)
     return 0
     
 if __name__ == "__main__":

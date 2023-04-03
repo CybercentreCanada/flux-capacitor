@@ -16,7 +16,7 @@ import time
 import sys
 
 def start_query(args):
-    create_spark_session("streaming anomaly detections",  num_machines=1, cpu_per_machine=15, shuffle_partitions=200)
+    create_spark_session("streaming anomaly detections",  1)
 
     create_view("sigma_rule_to_action")
 
@@ -30,6 +30,7 @@ def start_query(args):
         .option("stream-from-timestamp", ts)
         .option("streaming-skip-delete-snapshots", True)
         .load(constants.process_telemetry_table)
+        .repartition(15)
         .createOrReplaceTempView("process_telemetry_view")
     )
 
@@ -57,7 +58,7 @@ def start_query(args):
         .writeStream
         .queryName("detections")
         .trigger(processingTime=f"{args.trigger} seconds")
-        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table) + "noflux2")
+        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table) + "noflux3")
         .foreachBatch(foreach_batch_function)
         .start()
     )

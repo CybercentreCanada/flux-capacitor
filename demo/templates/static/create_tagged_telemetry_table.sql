@@ -7,6 +7,7 @@ create table {{tagged_telemetry_table}} (
 using iceberg
 TBLPROPERTIES (
   'write.parquet.compression-codec' = 'zstd',
-  'write.parquet.bloom-filter-enabled.column.id' = 'true'
+  'write.parquet.bloom-filter-enabled.column.id' = 'true',
+  'write.parquet.bloom-filter-enabled.column.host_id' = 'true'
 )
-PARTITIONED BY (days(timestamp), bucket(1000, host_id))
+PARTITIONED BY (days(timestamp))

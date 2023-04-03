@@ -1,5 +1,7 @@
 import sys
 import time
+import jinja2
+
 from constants import init_argparse
 import constants
 from util import (
@@ -21,8 +23,11 @@ def find_temporal_proximity(anomalies):
     num_temporal = temporal_anomalies.count()
     if num_temporal == 0:
         return temporal_anomalies
-    print(f"number of temporal proxity anomalies to validate {num_temporal}")
-    rendered_sql = f"""
+
+    lookups = temporal_anomalies.select('host_id').distinct().collect()
+    print(f"number of temporal proxity anomalies to lookup {len(lookups)}", flush=True)
+
+    template = jinja2.Template("""
         select
             e.*,
             a.detection_id,
@@ -32,12 +37,29 @@ def find_temporal_proximity(anomalies):
             a.detection_action            
         from
             global_temp.anomalies as a
-            join {constants.tagged_telemetry_table} as e 
+            join (
+               select
+                    * 
+                from
+                    {{tagged_telemetry_table}}
+                where
+                    host_id IN (
+                    {%- for lookup in lookups -%}
+                        '{{lookup.host_id}}'
+                        {%- if not loop.last -%}
+                            ,
+                        {%- endif -%}
+                    {%- endfor -%}
+                    )
+            ) as e 
             on a.detection_host = e.host_id
         where
             a.detection_action = 'temporal'
             and array_contains(map_values(e.sigma_pre_flux[a.detection_rule_name]), TRUE)
-        """
+        """)
+    rendered_sql = template.render({
+        "lookups": lookups, 
+        "tagged_telemetry_table": constants.tagged_telemetry_table})
     print(rendered_sql)
     return get_spark().sql(rendered_sql)
 
