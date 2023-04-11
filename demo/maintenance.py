@@ -32,7 +32,7 @@ def today_partition():
     return today
 
 def expire_snapshot_of_table(table_name):
-    log.info(f"expire_snapshot_of_table of {table_name}", flush=True)
+    log.info(f"expire_snapshot_of_table of {table_name}")
     sql = f"""
         CALL {constants.catalog}.system.expire_snapshots(
                 '{table_name}',
@@ -44,7 +44,7 @@ def expire_snapshot_of_table(table_name):
 
 
 def remove_orphan_files_of_table(table_name):
-    log.info(f"remove_orphan_files of {table_name}", flush=True)
+    log.info(f"remove_orphan_files of {table_name}")
     data_location = get_data_location(table_name)
     sql = f"""
     CALL {constants.catalog}.system.remove_orphan_files(
@@ -75,7 +75,7 @@ def remove_orphan_files_of_table(table_name):
 
 
 def sort_latest_files_in_current_partition_of_tagged_telemetry_table():
-    log.info("sort_latest_files_in_current_partition_of_tagged_telemetry_table", flush=True)
+    log.info("sort_latest_files_in_current_partition_of_tagged_telemetry_table")
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
             table => '{constants.tagged_telemetry_table}',
@@ -91,7 +91,7 @@ def sort_latest_files_in_current_partition_of_tagged_telemetry_table():
     get_spark().sql(sql).show()
 
 def sort_full_day_of_tagged_telemetry_table():
-    log.info("sort_full_day_of_tagged_telemetry_table", flush=True)
+    log.info("sort_full_day_of_tagged_telemetry_table")
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
             table => '{constants.tagged_telemetry_table}',
@@ -108,7 +108,7 @@ def sort_full_day_of_tagged_telemetry_table():
     get_spark().sql(sql).show()
 
 def ageoff_process_telemetry_table():
-    log.info("ageoff_process_telemetry_table", flush=True)
+    log.info("ageoff_process_telemetry_table")
     sql = f"""
         delete
         from
@@ -130,7 +130,7 @@ def every_hour(catalog, schema, verbose):
         expire_snapshot_of_table(constants.tagged_telemetry_table)
     finally:
         get_spark().stop()
-        log.info("done", flush=True)
+        log.info("done")
 
 def every_day(catalog, schema, verbose):
     init_globals(catalog, schema, verbose)
@@ -144,6 +144,6 @@ def every_day(catalog, schema, verbose):
         remove_orphan_files_of_table(constants.tagged_telemetry_table)
     finally:
         get_spark().stop()
-        log.info("done", flush=True)
+        log.info("done")
 
 

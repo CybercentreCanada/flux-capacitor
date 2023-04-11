@@ -200,5 +200,5 @@ def monitor_query(query, name):
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
         if query.exception():
-            log.info(query.exception, flush=True)
+            log.info(query.exception)
             exit(-1)

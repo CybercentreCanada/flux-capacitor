@@ -22,7 +22,7 @@ def start_query(catalog, schema, trigger, verbose):
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
-    log.info(f"starting at time: {ts}, tigger at every {trigger} seconds and advancing {trigger * 1000} milliseconds per batch", flush=True)
+    log.info(f"starting at time: {ts}, tigger at every {trigger} seconds and advancing {trigger * 1000} milliseconds per batch")
     (
         get_spark()
         .readStream.format("rate-micro-batch")
