@@ -1,5 +1,6 @@
 import time
 import sys
+import os
 
 import demo.constants as constants
 from demo.constants import init_globals, parse_args
@@ -14,6 +15,7 @@ from demo.util import (
 
 
 def start_query(catalog, schema, trigger):
+    print(f"current dir is: {os.getcwd()}")
     init_globals(catalog, schema)
     name = make_name(schema, trigger, __file__)
     create_spark_session("streaming synthetic producer", 1)
