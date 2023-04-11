@@ -20,7 +20,7 @@ from demo.util import (
 def run():
     print('inside run')
     create_spark_session("streaming alert builder", 1)
-    time.sleep(15)
+    time.sleep(120)
     raise Exception("this is an exception")
 
 run()
