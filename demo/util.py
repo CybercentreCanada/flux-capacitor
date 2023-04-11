@@ -39,7 +39,9 @@ def fullPath(name):
     if os.path.isfile(fname): 
         return fname
     fname = f"./demo/templates/generated/{name}.sql"
-    return fname
+    if os.path.isfile(fname): 
+        return fname
+    raise Exception(f"Can't find template file {name} if either ./demo/templates/static or ./demo/templates/generated")
 
 def render_statement(statement, **kwargs):
     kwargs.update(constants.template_vars)
