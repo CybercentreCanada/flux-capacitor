@@ -16,6 +16,8 @@ def make_name(schema, trigger, filename):
     return f"{basename}__{schema}_t{trigger}"
 
 def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15, driver_mem="2g"):
+    demo_dir = os.path.dirname(__file__)
+
     (
     SparkSession.builder.master(constants.master_uri)
     .appName(name)
@@ -26,7 +28,7 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .config("spark.executor.cores", cpu_per_machine)
     .config("spark.dynamicAllocation.enabled", False)
     .config("spark.cores.max", cpu_per_machine * num_machines)
-    .config("spark.jars", "./demo/flux-capacitor.jar")
+    .config("spark.jars", f"{demo_dir}/flux-capacitor.jar")
     .config("spark.sql.streaming.stateStore.providerClass", 
         "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
     .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
@@ -35,13 +37,15 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     )
 
 def fullPath(name):
-    fname = f"./demo/templates/static/{name}.sql"
+    demo_dir = os.path.dirname(__file__)
+
+    fname = f"{demo_dir}/templates/static/{name}.sql"
     if os.path.isfile(fname): 
         return fname
-    fname = f"./demo/templates/generated/{name}.sql"
+    fname = f"{demo_dir}/templates/generated/{name}.sql"
     if os.path.isfile(fname): 
         return fname
-    raise Exception(f"Can't find template file {name} if either ./demo/templates/static or ./demo/templates/generated")
+    raise Exception(f"Can't find template file {name} if either {demo_dir}/templates/static or ./demo/templates/generated")
 
 def render_statement(statement, **kwargs):
     kwargs.update(constants.template_vars)
@@ -74,7 +78,9 @@ def drop(tname):
     get_spark().sql(f"drop table if exists {tname}")  
     
 def read_flux_update_spec():
-    with open("./demo/templates/generated/flux_update_spec.yaml", "r") as f:
+    demo_dir = os.path.dirname(__file__)
+
+    with open(f"{demo_dir}/templates/generated/flux_update_spec.yaml", "r") as f:
         flux_update_spec = f.read()
     return flux_update_spec
 
@@ -185,8 +191,9 @@ def validate_events(df):
     return validated_events
 
 def write_metrics(name, metric):
-    os.makedirs("telemetry", exist_ok=True)
-    with open(f"telemetry/{name}.log.json", "a") as f:
+    demo_dir = os.path.dirname(__file__)
+    os.makedirs(f"{demo_dir}/telemetry", exist_ok=True)
+    with open(f"{demo_dir}/telemetry/{name}.log.json", "a") as f:
         f.write(json.dumps(metric) + '\n')
 
 def monitor_query(query, name):
