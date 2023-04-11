@@ -7,9 +7,9 @@ import json
 import demo.constants as constants
 
 demo_dir = os.path.dirname(__file__)
-
-jinja_env = Environment(loader=FileSystemLoader(demo_dir + "/"), autoescape=select_autoescape())
-print(f"jinja templates load from {demo_dir}")
+template_dirs = [demo_dir + "/templates/static", demo_dir + "templates/generated"]
+jinja_env = Environment(loader=FileSystemLoader(template_dirs),autoescape=select_autoescape())
+print(f"jinja templates load from {template_dirs}")
 
 def make_name(schema, trigger, filename):
     basename = os.path.basename(filename)
@@ -37,15 +37,6 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .getOrCreate()
     )
 
-def fullPath(name):
-    fname = f"./templates/static/{name}.sql"
-    if os.path.isfile(fname): 
-        return fname
-    fname = f"./templates/generated/{name}.sql"
-    if os.path.isfile(fname): 
-        return fname
-    raise Exception(f"Can't find template file {name} if either ./templates/static or ./templates/generated")
-
 def render_statement(statement, **kwargs):
     kwargs.update(constants.template_vars)
     template = Template(statement)
@@ -54,7 +45,7 @@ def render_statement(statement, **kwargs):
 
 def render_file(name, **kwargs):
     kwargs.update(constants.template_vars)
-    template = jinja_env.get_template(fullPath(name))
+    template = jinja_env.get_template(name + ".sql")
     rendered_sql = template.render(kwargs)
     return rendered_sql
 
