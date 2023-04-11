@@ -8,7 +8,7 @@ import demo.constants as constants
 
 demo_dir = os.path.dirname(__file__)
 
-jinja_env = Environment(loader=FileSystemLoader(demo_dir), autoescape=select_autoescape())
+jinja_env = Environment(loader=FileSystemLoader(demo_dir + "/"), autoescape=select_autoescape())
 print(f"jinja templates load from {demo_dir}")
 
 def make_name(schema, trigger, filename):
