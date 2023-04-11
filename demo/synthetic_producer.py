@@ -1,6 +1,11 @@
-import constants
 import time
+import sys
+import os
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+import constants
 from constants import init_argparse
 from util import (
     make_name,

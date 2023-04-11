@@ -9,7 +9,6 @@ from util import (
     run,
     flux_capacitor,
     create_view,
-    store_tagged_telemetry,
     create_dataframe
 )
 import time
@@ -50,7 +49,7 @@ def start_query(args):
         batchdf.persist()
         batchdf.createOrReplaceGlobalTempView("post_flux_eval_condition")
         run("publish_suspected_anomalies")
-        store_tagged_telemetry(batchdf)
+        run("insert_into_tagged_telemetry")
         get_spark().catalog.clearCache()
 
     streaming_query = (

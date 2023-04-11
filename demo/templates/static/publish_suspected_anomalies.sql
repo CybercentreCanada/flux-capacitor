@@ -1,9 +1,9 @@
 with 
 exploded_results as (
 select
-  {% for column_name, column_type in telemetry_schema.items() %}
-    {{column_name}} {{column_type}},
-  {% endfor %}
+  {% for column_name, column_type in telemetry_schema.items() -%}
+    {{column_name}},
+  {% endfor -%}
   sigma_pre_flux,
   uuid() as detection_id,
   timestamp as detection_ts, 

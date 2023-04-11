@@ -13,18 +13,6 @@ telemetry_schema = {
     "Commandline": "string",
 }
 
-telemetry_columns = """
-    timestamp,
-    host_id,
-    id,
-    parent_id,
-    captured_folder_colname,
-    Name,
-    ImagePath,
-    Commandline
-"""
-
-
 catalog = ""
 schema = ""
 tagged_telemetry_table = ""
@@ -65,7 +53,6 @@ def init_argparse() -> argparse.Namespace:
         "tagged_telemetry_table": tagged_telemetry_table,
         "process_telemetry_table": process_telemetry_table,
         "alerts_table": alerts_table,
-        "telemetry_schema": telemetry_schema,
-        "telemetry_columns": telemetry_columns,
+        "telemetry_schema": telemetry_schema
     }
     return args

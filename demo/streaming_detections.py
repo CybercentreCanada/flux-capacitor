@@ -1,3 +1,9 @@
+import sys
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 from constants import init_argparse
 import constants
 from util import (
@@ -9,7 +15,6 @@ from util import (
     run,
     flux_capacitor,
     create_view,
-    store_tagged_telemetry,
     create_dataframe
 )
 import time
@@ -29,6 +34,7 @@ def start_query(args):
         .format("iceberg")
         .option("stream-from-timestamp", ts)
         .option("streaming-skip-delete-snapshots", True)
+        .option("streaming-skip-overwrite-snapshots", True)
         .load(constants.process_telemetry_table)
         .createOrReplaceTempView("process_telemetry_view")
     )
@@ -47,7 +53,7 @@ def start_query(args):
         batchdf.persist()
         batchdf.createOrReplaceGlobalTempView("post_flux_eval_condition")
         run("publish_suspected_anomalies")
-        store_tagged_telemetry(batchdf)
+        run("insert_into_tagged_telemetry")
         get_spark().catalog.clearCache()
 
     streaming_query = (
@@ -55,7 +61,7 @@ def start_query(args):
         .writeStream
         .queryName("detections")
         .trigger(processingTime=f"{args.trigger} seconds")
-        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table))
+        .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table) )
         .foreachBatch(foreach_batch_function)
         .start()
     )

@@ -1,6 +1,5 @@
 import sys
 import time
-import jinja2
 
 from constants import init_argparse
 import constants
@@ -12,8 +11,9 @@ from util import (
     make_name,
     monitor_query,
     print_anomalies,
+    render_statement,
     validate_events,
-    store_alerts
+    run
 )
 
 
@@ -27,7 +27,7 @@ def find_temporal_proximity(anomalies):
     lookups = temporal_anomalies.select('host_id').distinct().collect()
     print(f"number of temporal proxity anomalies to lookup {len(lookups)}", flush=True)
 
-    template = jinja2.Template("""
+    statement = """
         select
             e.*,
             a.detection_id,
@@ -39,7 +39,12 @@ def find_temporal_proximity(anomalies):
             global_temp.anomalies as a
             join (
                select
-                    * 
+                    /* include all the columns of the original telemetry */
+                    {% for column_name, column_type in telemetry_schema.items() -%}
+                        {{column_name}},
+                    {% endfor -%}
+                    /* add tests performed by pre-flux statement */
+                    sigma_pre_flux
                 from
                     {{tagged_telemetry_table}}
                 where
@@ -56,10 +61,8 @@ def find_temporal_proximity(anomalies):
         where
             a.detection_action = 'temporal'
             and array_contains(map_values(e.sigma_pre_flux[a.detection_rule_name]), TRUE)
-        """)
-    rendered_sql = template.render({
-        "lookups": lookups, 
-        "tagged_telemetry_table": constants.tagged_telemetry_table})
+        """
+    rendered_sql = render_statement(statement, lookups=lookups)
     print(rendered_sql)
     return get_spark().sql(rendered_sql)
 
@@ -74,6 +77,7 @@ def start_query(args):
         .readStream
         .format("iceberg")
         .option("stream-from-timestamp", ts)
+        .option("streaming-skip-overwrite-snapshots", True)
         .option("streaming-skip-delete-snapshots", True)
         .load(constants.suspected_anomalies_table)
     )
@@ -81,15 +85,17 @@ def start_query(args):
     create_view("sigma_rule_to_action")
 
     def foreach_batch_function(anomalies, epoch_id):
+        print("START", flush=True)
         anomalies.persist()
         prox = find_temporal_proximity(anomalies)
         prox.persist()
         print_anomalies("context for historical temporal proximity:", prox)
         validated_prox = validate_events(prox)
         print_anomalies("validated historical temporal proximity:", validated_prox)
-        store_alerts(validated_prox)
+        run("insert_into_alerts")
         get_spark().catalog.clearCache()
-        anomalies.sparkSession.catalog.clearCache()
+        #anomalies.sparkSession.catalog.clearCache()
+        print("END", flush=True)
 
 
 

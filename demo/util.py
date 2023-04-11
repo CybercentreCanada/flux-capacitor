@@ -1,6 +1,6 @@
 from pyspark.sql import DataFrame
 from pyspark.sql import SparkSession
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 import os
 import time
 import json
@@ -15,18 +15,18 @@ def make_name(args, filename):
     basename = basename.replace(".py", "")
     return f"{basename}__{args.schema}_t{args.trigger}"
 
-def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15):
+def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15, driver_mem="2g"):
     (
     SparkSession.builder.master(constants.master_uri)
     .appName(name)
     .config("spark.sql.shuffle.partitions", shuffle_partitions)
     .config("spark.executor.memory", "40g")
-    .config("spark.driver.memory", "2g")
+    .config("spark.driver.memory", driver_mem)
     .config("spark.driver.cores", "1")
     .config("spark.executor.cores", cpu_per_machine)
     .config("spark.dynamicAllocation.enabled", False)
     .config("spark.cores.max", cpu_per_machine * num_machines)
-    .config("spark.jars", "../target/flux-capacitor-1.jar")
+    .config("spark.jars", "./flux-capacitor.jar")
     .config("spark.sql.streaming.stateStore.providerClass", 
         "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
     .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
@@ -41,16 +41,23 @@ def fullPath(name):
     fname = f"./templates/generated/{name}.sql"
     return fname
 
-def render(name):
+def render_statement(statement, **kwargs):
+    kwargs.update(constants.template_vars)
+    template = Template(statement)
+    rendered_sql = template.render(kwargs)
+    return rendered_sql
+
+def render_file(name, **kwargs):
+    kwargs.update(constants.template_vars)
     template = jinja_env.get_template(fullPath(name))
-    rendered_sql = template.render(constants.template_vars)
+    rendered_sql = template.render(kwargs)
     return rendered_sql
 
 def run(name) -> DataFrame:
-    return get_spark().sql(render(name))
+    return get_spark().sql(render_file(name))
 
 def create_dataframe(name) -> DataFrame:
-    return get_spark().sql(render(name))
+    return get_spark().sql(render_file(name))
 
 
 def create_view(name):
@@ -116,23 +123,33 @@ def print_final_results(msg, df):
 def get_spark():
     return SparkSession.getActiveSession()
 
+def get_table_location(table_name):
+    # when describe table is called the result is a table of two columns named col_name and data_type.
+    # The row with a col_name = Location is the value we are seeking
+    rows = get_spark().sql(f"describe extended {table_name}").where("col_name = 'Location'").collect()
+    location = rows[0].data_type
+    return location
+
+def get_data_location(table_name):
+    location = get_table_location(table_name)
+    return f"{location}/data"
+
+def get_metadata_location(table_name):
+    location = get_table_location(table_name)
+    return f"{location}/metadata"
+
 def get_checkpoint_location(table_name):
-    parts = table_name.split(".")
-    catalog_name = parts[0]
-    schema_name = parts[1]
-    table_name = parts[2]
+    location = get_table_location(table_name)
+    return f"{location}/checkpoint"
 
-    catalog_location = get_spark()._sc.getConf().get(f"spark.sql.catalog.{catalog_name}.warehouse")
-    checkpoint_location = f"{catalog_location}/{schema_name}/{table_name}/checkpoint"
-    return checkpoint_location
+# def store_alerts(df):
+#     df.writeTo(constants.alerts_table).append()
 
-def store_alerts(df):
-    df.writeTo(constants.alerts_table).append()
-
-def store_tagged_telemetry(df):
-    columns = list(constants.telemetry_schema.keys())
-    columns.append("sigma_pre_flux")
-    df.select(columns).writeTo(constants.tagged_telemetry_table).append()
+# def store_tagged_telemetry(df):
+#     columns = list(constants.telemetry_schema.keys())
+#     columns.append("sigma_pre_flux")
+#     columns.append("has_temporal_proximity_tags")
+#     df.select(columns).writeTo(constants.tagged_telemetry_table).append()
 
 def validate_events(df):
     # the incoming dataframe contains the event rows to validate
@@ -147,7 +164,7 @@ def validate_events(df):
     # The incomming df contains a detection_id column
     # determine which detection_id are validated
     # and use this list of validated detection ids to filer the incoming event rows
-    return get_spark().sql("""
+    validated_events = get_spark().sql("""
         select
             *
         from
@@ -162,6 +179,8 @@ def validate_events(df):
                     array_contains(sigma_final, detection_rule_name)
             )
     """)
+    validated_events.createOrReplaceGlobalTempView("validated_events")
+    return validated_events
 
 def write_metrics(name, metric):
     os.makedirs("telemetry", exist_ok=True)
@@ -171,8 +190,12 @@ def write_metrics(name, metric):
 def monitor_query(query, name):
     batchId = -1
     while(True):
-        time.sleep(1)
+        time.sleep(10)
+        print(query.status)
         if query.lastProgress:
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
+        if query.exception():
+            print(query.exception, flush=True)
+            exit(-1)
