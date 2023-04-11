@@ -32,6 +32,7 @@ def parse_args():
     return args
 
 def init_globals(the_catalog, the_schema):
+    print(f"catalog={the_catalog}, schema={the_schema}")
 
     global schema
     global catalog
