@@ -91,35 +91,38 @@ def flux_capacitor(input_df):
 
 def print_telemetry(msg, df):
     log.info(msg)
-    df.select(
-        "id",
-        "parent_id",
-        "Commandline",
-        "sigma.integration_test_parent",
-        "sigma.integration_test_ancestor",
-        "sigma.integration_test_temporal",
-        "sigma.integration_test_temporal_ordered",
-    ).orderBy("timestamp").show(truncate=False)
+    if log.isEnabledFor(logging.INFO):
+        df.select(
+            "id",
+            "parent_id",
+            "Commandline",
+            "sigma.integration_test_parent",
+            "sigma.integration_test_ancestor",
+            "sigma.integration_test_temporal",
+            "sigma.integration_test_temporal_ordered",
+        ).orderBy("timestamp").show(truncate=False)
 
 
 def print_anomalies(msg, df):
     log.info(msg)
-    (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
-    .orderBy("timestamp")
-    .show(truncate=False)
-    )
+    if log.isEnabledFor(logging.INFO):
+        (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
+        .orderBy("timestamp")
+        .show(truncate=False)
+        )
 
 def print_final_results(msg, df):
     log.info(msg)
-    (df.select(
-        "id",
-        "parent_id",
-        "Commandline",
-        "sigma_final",
-    )
-    .orderBy("timestamp")
-    .show(truncate=False)
-    )
+    if log.isEnabledFor(logging.INFO):
+        (df.select(
+            "id",
+            "parent_id",
+            "Commandline",
+            "sigma_final",
+        )
+        .orderBy("timestamp")
+        .show(truncate=False)
+        )
 
 def get_spark():
     return SparkSession.getActiveSession()
