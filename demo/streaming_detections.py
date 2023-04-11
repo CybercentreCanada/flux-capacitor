@@ -1,5 +1,4 @@
 import sys
-
 from demo.constants import init_globals, parse_args
 import demo.constants as constants
 from demo.util import (
@@ -14,9 +13,11 @@ from demo.util import (
     create_dataframe
 )
 import time
+import logging as logging
+log = logging.getLogger(__name__)
 
-def start_query(catalog, schema, trigger):
-    init_globals(catalog, schema)
+def start_query(catalog, schema, trigger, verbose):
+    init_globals(catalog, schema, verbose)
     name = make_name(schema, trigger, __file__)
     create_spark_session("streaming anomaly detections", 1)
 
@@ -70,7 +71,7 @@ def start_query(catalog, schema, trigger):
 
 def main() -> int:
     args = parse_args()
-    start_query(args.catalog, args.schema, args.trigger)
+    start_query(args.catalog, args.schema, args.trigger, args.verbose)
     return 0
     
 if __name__ == "__main__":

@@ -1,4 +1,3 @@
-
 import sys
 from demo.streaming_alert_builder import find_temporal_proximity, find_parents, find_ancestors
 import demo.constants as constants
@@ -16,6 +15,9 @@ from demo.util import (
     print_telemetry,
 )
 
+import logging as logging
+log = logging.getLogger(__name__)
+
 
 def create_or_replace_tables(args):
     drop(constants.tagged_telemetry_table)
@@ -30,15 +32,15 @@ def create_or_replace_tables(args):
 
 
 def run_detections(args):
-    print("The telemetry table consists of Windows start-process events:")
+    log.info("The telemetry table consists of Windows start-process events:")
     df = get_spark().table(constants.process_telemetry_table)
     df.select("timestamp", "id", "parent_id", "Commandline").orderBy("timestamp").show(truncate=False)
     df.createOrReplaceTempView("process_telemetry_view")
 
     # Step 1: evaluate discrete tags
     df = run("pre_flux_tagged_telemetry")
-    print("Step 1: pre-flux")
-    print(f"Statement applied: {render_file('pre_flux_tagged_telemetry')}")
+    log.info("Step 1: pre-flux")
+    log.info(f"Statement applied: {render_file('pre_flux_tagged_telemetry')}")
     print_telemetry("Result: map of tags for each rule:", df)
 
     # Step 2: time travel tags
@@ -50,13 +52,13 @@ def run_detections(args):
     # we can evaluate rules which combine tags from the current row and its parent
     post_flux_eval_condition = create_view("post_flux_eval_condition")
     post_flux_eval_condition.persist()
-    print("Step3: post-flux, evaluate the final sigma condition")
-    print(f"Statement applied: {render_file('post_flux_eval_condition')}")
+    log.info("Step3: post-flux, evaluate the final sigma condition")
+    log.info(f"Statement applied: {render_file('post_flux_eval_condition')}")
     print_final_results("Result: sigma_final is a list of firing sigma rule names:", post_flux_eval_condition)
 
     create_view("sigma_rule_to_action")
-    print("Events that tigger a sigma rule are published to the suspected_anomalies table")
-    print(f"Statement to publish anomalies: {render_file('publish_suspected_anomalies')}")
+    log.info("Events that tigger a sigma rule are published to the suspected_anomalies table")
+    log.info(f"Statement to publish anomalies: {render_file('publish_suspected_anomalies')}")
     run("publish_suspected_anomalies")
     run("insert_into_tagged_telemetry")
 
@@ -109,17 +111,18 @@ def run_temporal_proximity_alert_builder(args):
 
 
 def main() -> int:
-    args = constants.init_argparse()
+    args = constants.parse_args()
+    constants.init_globals(args.catalog, args.schema, args.verbose)
     create_spark_session("integration test", 1)
-    print("\n\n================ create_or_replace_tables =======================")
+    log.info("\n\n================ create_or_replace_tables =======================")
     create_or_replace_tables(args)
-    print("\n\n================ run_detections =======================")
+    log.info("\n\n================ run_detections =======================")
     run_detections(args)
-    print("\n\n================ run_temporal_proximity_alert_builder =======================")
+    log.info("\n\n================ run_temporal_proximity_alert_builder =======================")
     run_temporal_proximity_alert_builder(args)
-    print("\n\n================ run_parents_alert_builder =======================")
+    log.info("\n\n================ run_parents_alert_builder =======================")
     run_parents_alert_builder(args)
-    print("\n\n================ run_ancestors_alert_builder =======================")
+    log.info("\n\n================ run_ancestors_alert_builder =======================")
     run_ancestors_alert_builder(args)
     return 0
     

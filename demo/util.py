@@ -6,10 +6,13 @@ import time
 import json
 import demo.constants as constants
 
+import logging as logging
+log = logging.getLogger(__name__)
+
 demo_dir = os.path.dirname(__file__)
 template_dirs = [demo_dir + "/templates/static", demo_dir + "/templates/generated"]
 jinja_env = Environment(loader=FileSystemLoader(template_dirs),autoescape=select_autoescape())
-print(f"jinja templates load from {template_dirs}")
+log.info(f"jinja templates load from {template_dirs}")
 
 def make_name(schema, trigger, filename):
     basename = os.path.basename(filename)
@@ -87,7 +90,7 @@ def flux_capacitor(input_df):
     return df
 
 def print_telemetry(msg, df):
-    print(msg)
+    log.info(msg)
     df.select(
         "id",
         "parent_id",
@@ -100,14 +103,14 @@ def print_telemetry(msg, df):
 
 
 def print_anomalies(msg, df):
-    print(msg)
+    log.info(msg)
     (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
     .orderBy("timestamp")
     .show(truncate=False)
     )
 
 def print_final_results(msg, df):
-    print(msg)
+    log.info(msg)
     (df.select(
         "id",
         "parent_id",
@@ -124,7 +127,7 @@ def get_spark():
 def get_table_location(table_name):
     # when describe table is called the result is a table of two columns named col_name and data_type.
     # The row with a col_name = Location is the value we are seeking
-    print(f"describe extended {table_name}")
+    log.info(f"describe extended {table_name}")
     rows = get_spark().sql(f"describe extended {table_name}").where("col_name = 'Location'").collect()
     location = rows[0].data_type
     return location
@@ -191,11 +194,11 @@ def monitor_query(query, name):
     batchId = -1
     while(True):
         time.sleep(10)
-        print(query.status)
+        log.info(query.status)
         if query.lastProgress:
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
         if query.exception():
-            print(query.exception, flush=True)
+            log.info(query.exception, flush=True)
             exit(-1)

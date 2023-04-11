@@ -16,6 +16,8 @@ from demo.util import (
     run
 )
 
+import logging as logging
+log = logging.getLogger(__name__)
 
 def find_parents(anomalies):
     parent_anomalies = anomalies.where("detection_action = 'parent'")
@@ -24,7 +26,7 @@ def find_parents(anomalies):
         return parent_anomalies
     
     lookups = parent_anomalies.select('host_id', 'parent_id').collect()
-    print(f"number of parents to lookup {len(lookups)}")
+    log.info(f"number of parents to lookup {len(lookups)}")
 
     statement = """
         select
@@ -59,7 +61,7 @@ def find_parents(anomalies):
             and a.parent_id = e.id
         """
     rendered_sql = render_statement(statement, lookups=lookups)
-    print(rendered_sql)
+    log.info(rendered_sql)
 
     parents = get_spark().sql(rendered_sql)
     return parent_anomalies.unionAll(parents)
@@ -77,7 +79,7 @@ def find_ancestors(anomalies):
     while has_more_parents_to_find:
         childrens.createOrReplaceGlobalTempView("childrens")
         lookups = childrens.select('host_id', 'parent_id').collect()
-        print(f"number of parents to lookup {len(lookups)}")
+        log.info(f"number of parents to lookup {len(lookups)}")
         statement = """
             select
                 e.*,
@@ -113,7 +115,7 @@ def find_ancestors(anomalies):
                 a.detection_action = 'ancestor'
             """
         rendered_sql = render_statement(statement, lookups=lookups)
-        print(rendered_sql)
+        log.info(rendered_sql)
         
         parents = get_spark().sql(rendered_sql)
         parents.persist()
@@ -122,7 +124,7 @@ def find_ancestors(anomalies):
         all_ancestors.persist()
 
         has_more_parents_to_find = parents.where(parents.parent_id != '0').count() > 0
-        print(f"has_more_parents_to_find: {has_more_parents_to_find}")
+        log.info(f"has_more_parents_to_find: {has_more_parents_to_find}")
         childrens.unpersist(True)
         childrens = parents
 
@@ -136,7 +138,7 @@ def find_temporal_proximity(anomalies):
         return temporal_anomalies
 
     lookups = temporal_anomalies.select('host_id').distinct().collect()
-    print(f"number of temporal proxity anomalies to lookup {len(lookups)}", flush=True)
+    log.info(f"number of temporal proxity anomalies to lookup {len(lookups)}", flush=True)
 
     statement = """
         select
@@ -175,16 +177,16 @@ def find_temporal_proximity(anomalies):
             and array_contains(map_values(e.sigma_pre_flux[a.detection_rule_name]), TRUE)
         """
     rendered_sql = render_statement(statement, lookups=lookups)
-    print(rendered_sql)
+    log.info(rendered_sql)
     return get_spark().sql(rendered_sql)
 
 def force_caching_anomalies(anomalies, epoch_id):
     start = time.time()
-    print(f"number of anomalies to process {anomalies.count()}")
-    print(f"caching anomalies took {time.time() - start} seconds", flush=True)
+    log.info(f"number of anomalies to process {anomalies.count()}")
+    log.info(f"caching anomalies took {time.time() - start} seconds", flush=True)
 
 def foreach_batch_parents(anomalies, epoch_id):
-    print("START foreach_batch_parents", flush=True)
+    log.info("START foreach_batch_parents", flush=True)
     start = time.time()
     # Transform and write batchDF
     parents = find_parents(anomalies)
@@ -193,10 +195,10 @@ def foreach_batch_parents(anomalies, epoch_id):
     validated_parents = validate_events(parents)
     print_anomalies("validated historical parents:", validated_parents)
     run("insert_into_alerts")
-    print(f"END foreach_batch_parents took {time.time() - start} seconds", flush=True)
+    log.info(f"END foreach_batch_parents took {time.time() - start} seconds", flush=True)
 
 def foreach_batch_ancestors(anomalies, epoch_id):
-    print("START foreach_batch_ancestors", flush=True)
+    log.info("START foreach_batch_ancestors", flush=True)
     start = time.time()
     # Transform and write batchDF
     ancestors = find_ancestors(anomalies)
@@ -206,10 +208,10 @@ def foreach_batch_ancestors(anomalies, epoch_id):
     validated_ancestors.persist()
     print_anomalies("validated historical ancestors:", validated_ancestors)
     run("insert_into_alerts")
-    print(f"END foreach_batch_ancestors took {time.time() - start} seconds", flush=True)
+    log.info(f"END foreach_batch_ancestors took {time.time() - start} seconds", flush=True)
 
 def foreach_batch_temporal_proximity(anomalies, epoch_id):
-    print("START foreach_batch_temporal_proximity", flush=True)
+    log.info("START foreach_batch_temporal_proximity", flush=True)
     start = time.time()
     prox = find_temporal_proximity(anomalies)
     prox.persist()
@@ -217,10 +219,10 @@ def foreach_batch_temporal_proximity(anomalies, epoch_id):
     validated_prox = validate_events(prox)
     print_anomalies("validated historical temporal proximity:", validated_prox)
     run("insert_into_alerts")
-    print(f"END foreach_batch_temporal_proximity took {time.time() - start} seconds", flush=True)
+    log.info(f"END foreach_batch_temporal_proximity took {time.time() - start} seconds", flush=True)
 
-def start_query(catalog, schema, trigger):
-    init_globals(catalog, schema)
+def start_query(catalog, schema, trigger, verbose):
+    init_globals(catalog, schema, verbose)
     name = make_name(schema, trigger, __file__)
     create_spark_session("streaming alert builder", 1)
 
@@ -246,7 +248,7 @@ def start_query(catalog, schema, trigger):
         foreach_batch_ancestors(anomalies, epoch_id)
         foreach_batch_temporal_proximity(anomalies, epoch_id)
         get_spark().catalog.clearCache()
-        print(f"===========================================================================", flush=True)
+        log.info(f"===========================================================================", flush=True)
 
     streaming_query = (
         anomalies
@@ -263,7 +265,7 @@ def start_query(catalog, schema, trigger):
 
 def main() -> int:
     args = parse_args()
-    start_query(args.catalog, args.schema, args.trigger)
+    start_query(args.catalog, args.schema, args.trigger, args.verbose)
     return 0
     
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-
 from demo.constants import init_globals
 import demo.constants as constants
 from demo.util import (
@@ -8,6 +7,9 @@ from demo.util import (
     get_metadata_location,
     get_data_location
 )
+
+import logging as logging
+log = logging.getLogger(__name__)
 
 def prev_hour():
     prev_hour_ts = datetime.today() - timedelta(hours=1)
@@ -30,19 +32,19 @@ def today_partition():
     return today
 
 def expire_snapshot_of_table(table_name):
-    print(f"expire_snapshot_of_table of {table_name}", flush=True)
+    log.info(f"expire_snapshot_of_table of {table_name}", flush=True)
     sql = f"""
         CALL {constants.catalog}.system.expire_snapshots(
                 '{table_name}',
                 timestamp '{prev_hour()}'
         )
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show()
 
 
 def remove_orphan_files_of_table(table_name):
-    print(f"remove_orphan_files of {table_name}", flush=True)
+    log.info(f"remove_orphan_files of {table_name}", flush=True)
     data_location = get_data_location(table_name)
     sql = f"""
     CALL {constants.catalog}.system.remove_orphan_files(
@@ -53,7 +55,7 @@ def remove_orphan_files_of_table(table_name):
             dry_run => false
         )
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show(truncate=False)
 
     metadata_location = get_metadata_location(table_name)
@@ -66,14 +68,14 @@ def remove_orphan_files_of_table(table_name):
             dry_run => false
         )
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show(truncate=False)
 
 
 
 
 def sort_latest_files_in_current_partition_of_tagged_telemetry_table():
-    print("sort_latest_files_in_current_partition_of_tagged_telemetry_table", flush=True)
+    log.info("sort_latest_files_in_current_partition_of_tagged_telemetry_table", flush=True)
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
             table => '{constants.tagged_telemetry_table}',
@@ -85,11 +87,11 @@ def sort_latest_files_in_current_partition_of_tagged_telemetry_table():
             where => 'timestamp >= TIMESTAMP \\'{today_partition()}\\' '
         )
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show()
 
 def sort_full_day_of_tagged_telemetry_table():
-    print("sort_full_day_of_tagged_telemetry_table", flush=True)
+    log.info("sort_full_day_of_tagged_telemetry_table", flush=True)
     sql = f"""
     CALL {constants.catalog}.system.rewrite_data_files(
             table => '{constants.tagged_telemetry_table}',
@@ -102,11 +104,11 @@ def sort_full_day_of_tagged_telemetry_table():
             where => 'timestamp >= TIMESTAMP \\'{prev_day_partition()}\\' AND timestamp < TIMESTAMP \\'{today_partition()}\\' '
         )
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show()
 
 def ageoff_process_telemetry_table():
-    print("ageoff_process_telemetry_table", flush=True)
+    log.info("ageoff_process_telemetry_table", flush=True)
     sql = f"""
         delete
         from
@@ -114,11 +116,11 @@ def ageoff_process_telemetry_table():
         where
             timestamp < '{prev_day_partition()}'
     """
-    print(sql)
+    log.info(sql)
     get_spark().sql(sql).show()
 
-def every_hour(catalog, schema):
-    init_globals(catalog, schema)
+def every_hour(catalog, schema, verbose):
+    init_globals(catalog, schema, verbose)
     create_spark_session("every_hour", num_machines=1, driver_mem="2g")
     try:
         sort_latest_files_in_current_partition_of_tagged_telemetry_table()
@@ -128,10 +130,10 @@ def every_hour(catalog, schema):
         expire_snapshot_of_table(constants.tagged_telemetry_table)
     finally:
         get_spark().stop()
-        print("done", flush=True)
+        log.info("done", flush=True)
 
-def every_day(catalog, schema):
-    init_globals(catalog, schema)
+def every_day(catalog, schema, verbose):
+    init_globals(catalog, schema, verbose)
     create_spark_session("every_day", num_machines=1, driver_mem="2g")
     try:
         ageoff_process_telemetry_table()
@@ -142,6 +144,6 @@ def every_day(catalog, schema):
         remove_orphan_files_of_table(constants.tagged_telemetry_table)
     finally:
         get_spark().stop()
-        print("done", flush=True)
+        log.info("done", flush=True)
 
 

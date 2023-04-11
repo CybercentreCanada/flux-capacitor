@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import argparse
+import logging as logging
 
 master_uri = "spark://ver-1-spark-master-svc.spark:7077"
 telemetry_schema = {
@@ -13,6 +14,7 @@ telemetry_schema = {
     "Commandline": "string",
 }
 
+verbose = False
 catalog = ""
 schema = ""
 tagged_telemetry_table = ""
@@ -22,18 +24,25 @@ suspected_anomalies_table = ""
 alerts_table = ""
 template_vars: Dict[str, Any] = {}
 
+log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(usage="%(prog)s [OPTION] [FILE]...", description="Description here")
     parser.add_argument("--trigger", type=int, required=False, default=60)
     parser.add_argument("--catalog", type=str, required=True)
     parser.add_argument("--schema", type=str, required=True)
+    parser.add_argument("--verbose", type=bool, required=False)
     args = parser.parse_args()
     return args
 
-def init_globals(the_catalog, the_schema):
-    print(f"catalog={the_catalog}, schema={the_schema}")
+def init_globals(the_catalog, the_schema, the_verbose):
+    print(f"running in verbose mode {the_verbose}")
+    if the_verbose:
+        logging.basicConfig(level=logging.INFO, force=True)
 
+    log.info(f"catalog={the_catalog}, schema={the_schema}")
+
+    global verbose
     global schema
     global catalog
 
@@ -44,6 +53,7 @@ def init_globals(the_catalog, the_schema):
 
     schema = the_schema
     catalog = the_catalog
+    verbose = the_verbose
 
     tagged_telemetry_table = f"{catalog}.{schema}.tagged_telemetry_table"
     process_telemetry_table = f"{catalog}.{schema}.process_telemetry_table"

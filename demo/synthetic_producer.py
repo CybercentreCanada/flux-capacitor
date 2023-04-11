@@ -1,6 +1,5 @@
 import time
 import sys
-import os
 
 import demo.constants as constants
 from demo.constants import init_globals, parse_args
@@ -13,15 +12,17 @@ from demo.util import (
     create_dataframe,
 )
 
+import logging as logging
+log = logging.getLogger(__name__)
 
-def start_query(catalog, schema, trigger):
-    init_globals(catalog, schema)
+def start_query(catalog, schema, trigger, verbose):
+    init_globals(catalog, schema, verbose)
     name = make_name(schema, trigger, __file__)
     create_spark_session("streaming synthetic producer", 1)
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
-    print(f"starting at time: {ts}, tigger at every {trigger} seconds and advancing {trigger * 1000} milliseconds per batch", flush=True)
+    log.info(f"starting at time: {ts}, tigger at every {trigger} seconds and advancing {trigger * 1000} milliseconds per batch", flush=True)
     (
         get_spark()
         .readStream.format("rate-micro-batch")
@@ -49,7 +50,7 @@ def start_query(catalog, schema, trigger):
 
 def main() -> int:
     args = parse_args()
-    start_query(args.catalog, args.schema, args.trigger)
+    start_query(args.catalog, args.schema, args.trigger, args.verbose)
     return 0
 
 

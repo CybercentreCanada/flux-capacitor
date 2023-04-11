@@ -4,8 +4,8 @@ import demo.constants as constants
 from demo.util import create_spark_session, drop, run
 
 
-def create_tables(catalog, schema):
-    init_globals(catalog, schema)
+def create_tables(catalog, schema, verbose):
+    init_globals(catalog, schema, verbose)
     create_spark_session("create tables", 1)
     drop(constants.tagged_telemetry_table)
     drop(constants.process_telemetry_table)
@@ -19,7 +19,7 @@ def create_tables(catalog, schema):
 
 def main() -> int:
     args = parse_args()
-    create_tables(args.catalog, args.schema)
+    create_tables(args.catalog, args.schema, True)
     return 0
 
 
