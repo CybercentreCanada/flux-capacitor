@@ -124,6 +124,7 @@ def get_spark():
 def get_table_location(table_name):
     # when describe table is called the result is a table of two columns named col_name and data_type.
     # The row with a col_name = Location is the value we are seeking
+    print(f"describe extended {table_name}")
     rows = get_spark().sql(f"describe extended {table_name}").where("col_name = 'Location'").collect()
     location = rows[0].data_type
     return location
