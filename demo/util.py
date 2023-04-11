@@ -7,7 +7,7 @@ import json
 import demo.constants as constants
 
 demo_dir = os.path.dirname(__file__)
-template_dirs = [demo_dir + "/templates/static", demo_dir + "templates/generated"]
+template_dirs = [demo_dir + "/templates/static", demo_dir + "/templates/generated"]
 jinja_env = Environment(loader=FileSystemLoader(template_dirs),autoescape=select_autoescape())
 print(f"jinja templates load from {template_dirs}")
 
