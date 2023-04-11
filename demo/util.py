@@ -4,7 +4,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 import os
 import time
 import json
-import constants
+import demo.constants as constants
 
 
 jinja_env = Environment(loader=FileSystemLoader("."), autoescape=select_autoescape())

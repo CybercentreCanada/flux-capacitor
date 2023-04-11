@@ -1,15 +1,10 @@
 import time
 import sys
 import time
-import sys
-import os
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-from constants import init_argparse
-import constants
-from util import (
+from demo.constants import init_argparse
+import demo.constants as constants
+from demo.util import (
     get_checkpoint_location,
     get_spark,
     create_spark_session,
