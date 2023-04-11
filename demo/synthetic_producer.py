@@ -1,13 +1,9 @@
 import time
 import sys
-import os
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-import constants
-from constants import init_argparse
-from util import (
+import demo.constants as constants
+from demo.constants import init_globals, parse_args
+from demo.util import (
     make_name,
     monitor_query,
     get_checkpoint_location,
@@ -15,21 +11,22 @@ from util import (
     get_spark,
     create_dataframe,
 )
-import sys
 
 
-def start_query(args):
+def start_query(catalog, schema, trigger):
+    init_globals(catalog, schema)
+    name = make_name(schema, trigger, __file__)
     create_spark_session("streaming synthetic producer", 1)
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
-    print(f"starting at time: {ts}, tigger at every {args.trigger} seconds and advancing {args.trigger * 1000} milliseconds per batch", flush=True)
+    print(f"starting at time: {ts}, tigger at every {trigger} seconds and advancing {trigger * 1000} milliseconds per batch", flush=True)
     (
         get_spark()
         .readStream.format("rate-micro-batch")
         .option("rowsPerBatch", 60 * 5000)
         .option("startTimestamp", ts)
-        .option("advanceMillisPerBatch", args.trigger * 1000)
+        .option("advanceMillisPerBatch", trigger * 1000)
         .load()
         .createOrReplaceTempView("rate_view")
     )
@@ -40,19 +37,18 @@ def start_query(args):
         df.writeStream.format("iceberg")
         .queryName("synthetic producer")
         .outputMode("append")
-        .trigger(processingTime=f"{args.trigger} seconds")
+        .trigger(processingTime=f"{trigger} seconds")
         .option("path", constants.process_telemetry_table)
         .option("checkpointLocation", get_checkpoint_location(constants.process_telemetry_table))
         .start()
     )
 
-    monitor_query(streaming_query, args.name)
+    monitor_query(streaming_query, name)
 
 
 def main() -> int:
-    args = init_argparse()
-    args.name = make_name(args, __file__)
-    start_query(args)
+    args = parse_args()
+    start_query(args.catalog, args.schema, args.trigger)
     return 0
 
 

@@ -1,14 +1,9 @@
 import sys
 import time
-import sys
-import os
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-from constants import init_argparse
-import constants
-from util import (
+from demo.constants import init_globals, parse_args
+import demo.constants as constants
+from demo.util import (
     get_checkpoint_location,
     get_spark,
     create_spark_session,
@@ -224,7 +219,9 @@ def foreach_batch_temporal_proximity(anomalies, epoch_id):
     run("insert_into_alerts")
     print(f"END foreach_batch_temporal_proximity took {time.time() - start} seconds", flush=True)
 
-def start_query(args):
+def start_query(catalog, schema, trigger):
+    init_globals(catalog, schema)
+    name = make_name(schema, trigger, __file__)
     create_spark_session("streaming alert builder", 1)
 
     # current time in milliseconds
@@ -255,19 +252,18 @@ def start_query(args):
         anomalies
         .writeStream
         .queryName("alert builder")
-        .trigger(processingTime=f"{args.trigger} seconds")
+        .trigger(processingTime=f"{trigger} seconds")
         .option("checkpointLocation", get_checkpoint_location(constants.alerts_table) + "_alert_builder")
         .foreachBatch(foreach_batch_function)
         .start()
     )
 
-    monitor_query(streaming_query, args.name)
+    monitor_query(streaming_query, name)
 
 
 def main() -> int:
-    args = init_argparse()
-    args.name = make_name(args, __file__)
-    start_query(args)
+    args = parse_args()
+    start_query(args.catalog, args.schema, args.trigger)
     return 0
     
 if __name__ == "__main__":

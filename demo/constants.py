@@ -23,13 +23,15 @@ alerts_table = ""
 template_vars: Dict[str, Any] = {}
 
 
-def init_argparse() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser(usage="%(prog)s [OPTION] [FILE]...", description="Description here")
     parser.add_argument("--trigger", type=int, required=False, default=60)
     parser.add_argument("--catalog", type=str, required=True)
     parser.add_argument("--schema", type=str, required=True)
-
     args = parser.parse_args()
+    return args
+
+def init_globals(the_catalog, the_schema):
 
     global schema
     global catalog
@@ -39,8 +41,8 @@ def init_argparse() -> argparse.Namespace:
     global suspected_anomalies_table
     global alerts_table
 
-    schema = args.schema
-    catalog = args.catalog
+    schema = the_schema
+    catalog = the_catalog
 
     tagged_telemetry_table = f"{catalog}.{schema}.tagged_telemetry_table"
     process_telemetry_table = f"{catalog}.{schema}.process_telemetry_table"
@@ -55,4 +57,3 @@ def init_argparse() -> argparse.Namespace:
         "alerts_table": alerts_table,
         "telemetry_schema": telemetry_schema
     }
-    return args

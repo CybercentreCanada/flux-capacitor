@@ -1,10 +1,11 @@
 import sys
-from constants import init_argparse
-import constants
-from util import create_spark_session, drop, run
+from demo.constants import init_globals, parse_args
+import demo.constants as constants
+from demo.util import create_spark_session, drop, run
 
 
-def create_tables(args):
+def create_tables(catalog, schema):
+    init_globals(catalog, schema)
     create_spark_session("create tables", 1)
     drop(constants.tagged_telemetry_table)
     drop(constants.process_telemetry_table)
@@ -17,8 +18,8 @@ def create_tables(args):
 
 
 def main() -> int:
-    args = init_argparse()
-    create_tables(args)
+    args = parse_args()
+    create_tables(args.catalog, args.schema)
     return 0
 
 

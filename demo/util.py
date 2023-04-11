@@ -10,10 +10,10 @@ import demo.constants as constants
 jinja_env = Environment(loader=FileSystemLoader("."), autoescape=select_autoescape())
 
 
-def make_name(args, filename):
+def make_name(schema, trigger, filename):
     basename = os.path.basename(filename)
     basename = basename.replace(".py", "")
-    return f"{basename}__{args.schema}_t{args.trigger}"
+    return f"{basename}__{schema}_t{trigger}"
 
 def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15, driver_mem="2g"):
     (
@@ -26,7 +26,7 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .config("spark.executor.cores", cpu_per_machine)
     .config("spark.dynamicAllocation.enabled", False)
     .config("spark.cores.max", cpu_per_machine * num_machines)
-    .config("spark.jars", "./flux-capacitor.jar")
+    .config("spark.jars", "./demo/flux-capacitor.jar")
     .config("spark.sql.streaming.stateStore.providerClass", 
         "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
     .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
@@ -35,10 +35,10 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     )
 
 def fullPath(name):
-    fname = f"./templates/static/{name}.sql"
+    fname = f"./demo/templates/static/{name}.sql"
     if os.path.isfile(fname): 
         return fname
-    fname = f"./templates/generated/{name}.sql"
+    fname = f"./demo/templates/generated/{name}.sql"
     return fname
 
 def render_statement(statement, **kwargs):
@@ -72,7 +72,7 @@ def drop(tname):
     get_spark().sql(f"drop table if exists {tname}")  
     
 def read_flux_update_spec():
-    with open("./templates/generated/flux_update_spec.yaml", "r") as f:
+    with open("./demo/templates/generated/flux_update_spec.yaml", "r") as f:
         flux_update_spec = f.read()
     return flux_update_spec
 

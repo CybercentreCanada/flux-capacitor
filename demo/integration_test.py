@@ -1,10 +1,8 @@
 
 import sys
-from streaming_proximity_alert_builder import find_temporal_proximity
-from streaming_parent_alert_builder import find_parents
-from streaming_ancestor_alert_builder import find_ancestors
-import constants
-from util import (
+from demo.streaming_alert_builder import find_temporal_proximity, find_parents, find_ancestors
+import demo.constants as constants
+from demo.util import (
     create_view,
     get_spark,
     create_spark_session,

@@ -1,12 +1,8 @@
 import sys
-import os
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-from constants import init_argparse
-import constants
-from util import (
+from demo.constants import init_globals, parse_args
+import demo.constants as constants
+from demo.util import (
     get_checkpoint_location,
     get_spark,
     create_spark_session,
@@ -18,9 +14,10 @@ from util import (
     create_dataframe
 )
 import time
-import sys
 
-def start_query(args):
+def start_query(catalog, schema, trigger):
+    init_globals(catalog, schema)
+    name = make_name(schema, trigger, __file__)
     create_spark_session("streaming anomaly detections", 1)
 
     create_view("sigma_rule_to_action")
@@ -60,21 +57,20 @@ def start_query(args):
         final_df
         .writeStream
         .queryName("detections")
-        .trigger(processingTime=f"{args.trigger} seconds")
+        .trigger(processingTime=f"{trigger} seconds")
         .option("checkpointLocation", get_checkpoint_location(constants.tagged_telemetry_table) )
         .foreachBatch(foreach_batch_function)
         .start()
     )
 
-    monitor_query(streaming_query, args.name)
+    monitor_query(streaming_query, name)
 
 
 
 
 def main() -> int:
-    args = init_argparse()
-    args.name = make_name(args, __file__)
-    start_query(args)
+    args = parse_args()
+    start_query(args.catalog, args.schema, args.trigger)
     return 0
     
 if __name__ == "__main__":
