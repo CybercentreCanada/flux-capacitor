@@ -91,7 +91,7 @@ def flux_capacitor(input_df):
 
 def print_telemetry(msg, df):
     log.info(msg)
-    if log.isEnabledFor(logging.INFO):
+    if log.isEnabledFor(logging.DEBUG):
         df.select(
             "id",
             "parent_id",
@@ -104,16 +104,16 @@ def print_telemetry(msg, df):
 
 
 def print_anomalies(msg, df):
-    log.info(msg)
-    if log.isEnabledFor(logging.INFO):
+    log.debug(msg)
+    if log.isEnabledFor(logging.DEBUG):
         (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
         .orderBy("timestamp")
         .show(truncate=False)
         )
 
 def print_final_results(msg, df):
-    log.info(msg)
-    if log.isEnabledFor(logging.INFO):
+    log.debug(msg)
+    if log.isEnabledFor(logging.DEBUG):
         (df.select(
             "id",
             "parent_id",
@@ -130,7 +130,7 @@ def get_spark():
 def get_table_location(table_name):
     # when describe table is called the result is a table of two columns named col_name and data_type.
     # The row with a col_name = Location is the value we are seeking
-    log.info(f"describe extended {table_name}")
+    log.debug(f"describe extended {table_name}")
     rows = get_spark().sql(f"describe extended {table_name}").where("col_name = 'Location'").collect()
     location = rows[0].data_type
     return location
@@ -197,11 +197,11 @@ def monitor_query(query, name):
     batchId = -1
     while(True):
         time.sleep(10)
-        log.info(query.status)
+        log.debug(query.status)
         if query.lastProgress:
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
         if query.exception():
-            log.info(query.exception)
+            log.error(query.exception)
             exit(-1)
