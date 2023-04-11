@@ -6,9 +6,10 @@ import time
 import json
 import demo.constants as constants
 
+demo_dir = os.path.dirname(__file__)
 
-jinja_env = Environment(loader=FileSystemLoader("."), autoescape=select_autoescape())
-
+jinja_env = Environment(loader=FileSystemLoader(demo_dir), autoescape=select_autoescape())
+print(f"jinja templates load from {demo_dir}")
 
 def make_name(schema, trigger, filename):
     basename = os.path.basename(filename)
@@ -37,15 +38,13 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     )
 
 def fullPath(name):
-    demo_dir = os.path.dirname(__file__)
-
-    fname = f"{demo_dir}/templates/static/{name}.sql"
+    fname = f"./templates/static/{name}.sql"
     if os.path.isfile(fname): 
         return fname
-    fname = f"{demo_dir}/templates/generated/{name}.sql"
+    fname = f"./templates/generated/{name}.sql"
     if os.path.isfile(fname): 
         return fname
-    raise Exception(f"Can't find template file {name} if either {demo_dir}/templates/static or ./demo/templates/generated")
+    raise Exception(f"Can't find template file {name} if either ./templates/static or ./templates/generated")
 
 def render_statement(statement, **kwargs):
     kwargs.update(constants.template_vars)
