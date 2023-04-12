@@ -190,6 +190,7 @@ def monitor_query(query, name):
         time.sleep(10)
         log.info(query.status)
         if query.lastProgress:
+            log.warn(query.status)
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
