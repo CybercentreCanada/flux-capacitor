@@ -90,8 +90,8 @@ def flux_capacitor(input_df):
     return df
 
 def print_telemetry(msg, df):
-    log.info(msg)
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.INFO):
+        log.info(msg)
         df.select(
             "id",
             "parent_id",
@@ -104,16 +104,16 @@ def print_telemetry(msg, df):
 
 
 def print_anomalies(msg, df):
-    log.debug(msg)
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.INFO):
+        log.info(msg)
         (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
         .orderBy("timestamp")
         .show(truncate=False)
         )
 
 def print_final_results(msg, df):
-    log.debug(msg)
-    if log.isEnabledFor(logging.DEBUG):
+    if log.isEnabledFor(logging.INFO):
+        log.info(msg)
         (df.select(
             "id",
             "parent_id",
@@ -130,7 +130,7 @@ def get_spark():
 def get_table_location(table_name):
     # when describe table is called the result is a table of two columns named col_name and data_type.
     # The row with a col_name = Location is the value we are seeking
-    log.debug(f"describe extended {table_name}")
+    log.info(f"describe extended {table_name}")
     rows = get_spark().sql(f"describe extended {table_name}").where("col_name = 'Location'").collect()
     location = rows[0].data_type
     return location
@@ -146,15 +146,6 @@ def get_metadata_location(table_name):
 def get_checkpoint_location(table_name):
     location = get_table_location(table_name)
     return f"{location}/checkpoint"
-
-# def store_alerts(df):
-#     df.writeTo(constants.alerts_table).append()
-
-# def store_tagged_telemetry(df):
-#     columns = list(constants.telemetry_schema.keys())
-#     columns.append("sigma_pre_flux")
-#     columns.append("has_temporal_proximity_tags")
-#     df.select(columns).writeTo(constants.tagged_telemetry_table).append()
 
 def validate_events(df):
     # the incoming dataframe contains the event rows to validate
@@ -197,11 +188,11 @@ def monitor_query(query, name):
     batchId = -1
     while(True):
         time.sleep(10)
-        log.debug(query.status)
+        log.info(query.status)
         if query.lastProgress:
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
                 write_metrics(name, query.lastProgress)
         if query.exception():
             log.error(query.exception)
-            exit(-1)
+            break

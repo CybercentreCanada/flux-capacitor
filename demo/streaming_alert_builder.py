@@ -26,7 +26,7 @@ def find_parents(anomalies):
         return parent_anomalies
     
     lookups = parent_anomalies.select('host_id', 'parent_id').collect()
-    log.debug(f"number of parents to lookup {len(lookups)}")
+    log.info(f"number of parents to lookup {len(lookups)}")
 
     statement = """
         select
@@ -79,7 +79,7 @@ def find_ancestors(anomalies):
     while has_more_parents_to_find:
         childrens.createOrReplaceGlobalTempView("childrens")
         lookups = childrens.select('host_id', 'parent_id').collect()
-        log.debug(f"number of parents to lookup {len(lookups)}")
+        log.info(f"number of parents to lookup {len(lookups)}")
         statement = """
             select
                 e.*,
@@ -138,7 +138,7 @@ def find_temporal_proximity(anomalies):
         return temporal_anomalies
 
     lookups = temporal_anomalies.select('host_id').distinct().collect()
-    log.debug(f"number of temporal proxity anomalies to lookup {len(lookups)}")
+    log.info(f"number of temporal proxity anomalies to lookup {len(lookups)}")
 
     statement = """
         select
@@ -182,11 +182,10 @@ def find_temporal_proximity(anomalies):
 
 def force_caching_anomalies(anomalies, epoch_id):
     start = time.time()
-    log.debug(f"number of anomalies to process {anomalies.count()}")
-    log.debug(f"caching anomalies took {time.time() - start} seconds")
+    num = anomalies.count()
+    log.info(f"caching {num} anomalies took {time.time() - start} seconds")
 
 def foreach_batch_parents(anomalies, epoch_id):
-    log.debug("START foreach_batch_parents")
     start = time.time()
     # Transform and write batchDF
     parents = find_parents(anomalies)
@@ -195,10 +194,9 @@ def foreach_batch_parents(anomalies, epoch_id):
     validated_parents = validate_events(parents)
     print_anomalies("validated historical parents:", validated_parents)
     run("insert_into_alerts")
-    log.debug(f"END foreach_batch_parents took {time.time() - start} seconds")
+    log.info(f"foreach_batch_parents took {time.time() - start} seconds")
 
 def foreach_batch_ancestors(anomalies, epoch_id):
-    log.debug("START foreach_batch_ancestors")
     start = time.time()
     # Transform and write batchDF
     ancestors = find_ancestors(anomalies)
@@ -208,10 +206,9 @@ def foreach_batch_ancestors(anomalies, epoch_id):
     validated_ancestors.persist()
     print_anomalies("validated historical ancestors:", validated_ancestors)
     run("insert_into_alerts")
-    log.debug(f"END foreach_batch_ancestors took {time.time() - start} seconds")
+    log.info(f"foreach_batch_ancestors took {time.time() - start} seconds")
 
 def foreach_batch_temporal_proximity(anomalies, epoch_id):
-    log.debug("START foreach_batch_temporal_proximity")
     start = time.time()
     prox = find_temporal_proximity(anomalies)
     prox.persist()
@@ -219,7 +216,7 @@ def foreach_batch_temporal_proximity(anomalies, epoch_id):
     validated_prox = validate_events(prox)
     print_anomalies("validated historical temporal proximity:", validated_prox)
     run("insert_into_alerts")
-    log.debug(f"END foreach_batch_temporal_proximity took {time.time() - start} seconds")
+    log.info(f"foreach_batch_temporal_proximity took {time.time() - start} seconds")
 
 def start_query(catalog, schema, trigger, verbose):
     init_globals(catalog, schema, verbose)
@@ -248,7 +245,6 @@ def start_query(catalog, schema, trigger, verbose):
         foreach_batch_ancestors(anomalies, epoch_id)
         foreach_batch_temporal_proximity(anomalies, epoch_id)
         get_spark().catalog.clearCache()
-        log.debug(f"===========================================================================")
 
     streaming_query = (
         anomalies

@@ -39,6 +39,8 @@ def init_globals(the_catalog, the_schema, the_verbose):
     print(f"running in verbose mode {the_verbose}")
     if the_verbose:
         logging.basicConfig(level=logging.INFO, force=True)
+    else:
+        logging.basicConfig(level=logging.WARN, force=True)
 
     log.info(f"catalog={the_catalog}, schema={the_schema}")
 
