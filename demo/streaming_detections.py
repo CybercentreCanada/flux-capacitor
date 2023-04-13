@@ -72,7 +72,8 @@ def start_query(catalog, schema, trigger, verbose):
 def main() -> int:
     args = parse_args()
     start_query(args.catalog, args.schema, args.trigger, args.verbose)
-    return 0
+    # we never expect to stop, if we do it indicates an error, return -1
+    return -1
     
 if __name__ == "__main__":
     sys.exit(main())
