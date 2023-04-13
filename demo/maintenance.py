@@ -112,6 +112,21 @@ def sort_full_day_of_tagged_telemetry_table():
     log.info(sql)
     get_spark().sql(sql).show()
 
+def binpack_full_day_of_metrics_table():
+    log.info("binpack_full_day_of_metrics_table")
+    sql = f"""
+    CALL {constants.catalog}.system.rewrite_data_files(
+            table => '{constants.metrics_table}',
+            options => map('min-input-files', '100',
+                        'max-concurrent-file-group-rewrites', '100',
+                        'partial-progress.enabled', 'false',
+                        'rewrite-all', 'true'),
+            where => 'timestamp >= TIMESTAMP \\'{prev_day_partition()}\\' AND timestamp < TIMESTAMP \\'{today_partition()}\\' '
+        )
+    """
+    log.info(sql)
+    get_spark().sql(sql).show()
+
 def ageoff_process_telemetry_table():
     log.info("ageoff_process_telemetry_table")
     sql = f"""
@@ -139,14 +154,17 @@ def every_day(catalog, schema, verbose):
     try:
         ageoff_process_telemetry_table()
         sort_full_day_of_tagged_telemetry_table()
+        binpack_full_day_of_metrics_table()
         expire_snapshot_of_table(constants.alerts_table)
         expire_snapshot_of_table(constants.process_telemetry_table)
         expire_snapshot_of_table(constants.suspected_anomalies_table)
         expire_snapshot_of_table(constants.tagged_telemetry_table)
+        expire_snapshot_of_table(constants.metrics_table)
         remove_orphan_files_of_table(constants.alerts_table)
         remove_orphan_files_of_table(constants.process_telemetry_table)
         remove_orphan_files_of_table(constants.suspected_anomalies_table)
         remove_orphan_files_of_table(constants.tagged_telemetry_table)
+        remove_orphan_files_of_table(constants.metrics_table)
     finally:
         get_spark().stop()
         log.info("done")
