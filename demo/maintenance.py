@@ -26,6 +26,11 @@ def prev_day_partition():
     prev_day = prev_day_dt.strftime("%Y-%m-%d 00:00:00")
     return prev_day
 
+def prev_week_partition():
+    prev_day_dt = datetime.today() - timedelta(days=7)
+    prev_day = prev_day_dt.strftime("%Y-%m-%d 00:00:00")
+    return prev_day
+
 def today_partition():
     today_dt = datetime.today()
     today = today_dt.strftime("%Y-%m-%d 00:00:00")
@@ -36,7 +41,7 @@ def expire_snapshot_of_table(table_name):
     sql = f"""
         CALL {constants.catalog}.system.expire_snapshots(
                 '{table_name}',
-                timestamp '{prev_hour()}'
+                timestamp '{prev_week_partition()}'
         )
     """
     log.info(sql)
@@ -114,7 +119,7 @@ def ageoff_process_telemetry_table():
         from
             {constants.process_telemetry_table}
         where
-            timestamp < '{prev_day_partition()}'
+            timestamp < '{prev_week_partition()}'
     """
     log.info(sql)
     get_spark().sql(sql).show()
@@ -124,10 +129,6 @@ def every_hour(catalog, schema, verbose):
     create_spark_session("every_hour", num_machines=1, driver_mem="2g")
     try:
         sort_latest_files_in_current_partition_of_tagged_telemetry_table()
-        expire_snapshot_of_table(constants.alerts_table)
-        expire_snapshot_of_table(constants.process_telemetry_table)
-        expire_snapshot_of_table(constants.suspected_anomalies_table)
-        expire_snapshot_of_table(constants.tagged_telemetry_table)
     finally:
         get_spark().stop()
         log.info("done")
@@ -138,6 +139,10 @@ def every_day(catalog, schema, verbose):
     try:
         ageoff_process_telemetry_table()
         sort_full_day_of_tagged_telemetry_table()
+        expire_snapshot_of_table(constants.alerts_table)
+        expire_snapshot_of_table(constants.process_telemetry_table)
+        expire_snapshot_of_table(constants.suspected_anomalies_table)
+        expire_snapshot_of_table(constants.tagged_telemetry_table)
         remove_orphan_files_of_table(constants.alerts_table)
         remove_orphan_files_of_table(constants.process_telemetry_table)
         remove_orphan_files_of_table(constants.suspected_anomalies_table)
