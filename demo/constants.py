@@ -19,6 +19,7 @@ catalog = ""
 schema = ""
 tagged_telemetry_table = ""
 
+metrics_table = ""
 process_telemetry_table = ""
 suspected_anomalies_table = ""
 alerts_table = ""
@@ -52,6 +53,7 @@ def init_globals(the_catalog, the_schema, the_verbose):
     global tagged_telemetry_table
     global suspected_anomalies_table
     global alerts_table
+    global metrics_table
 
     schema = the_schema
     catalog = the_catalog
@@ -61,6 +63,7 @@ def init_globals(the_catalog, the_schema, the_verbose):
     process_telemetry_table = f"{catalog}.{schema}.process_telemetry_table"
     suspected_anomalies_table = f"{catalog}.{schema}.suspected_anomalies"
     alerts_table = f"{catalog}.{schema}.alerts"
+    metrics_table = f"{catalog}.{schema}.metrics_table"
 
     global template_vars
     template_vars = {
@@ -68,5 +71,6 @@ def init_globals(the_catalog, the_schema, the_verbose):
         "tagged_telemetry_table": tagged_telemetry_table,
         "process_telemetry_table": process_telemetry_table,
         "alerts_table": alerts_table,
-        "telemetry_schema": telemetry_schema
+        "telemetry_schema": telemetry_schema,
+        "metrics_table": metrics_table,
     }

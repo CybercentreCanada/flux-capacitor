@@ -11,10 +11,12 @@ def create_tables(catalog, schema, verbose):
     drop(constants.process_telemetry_table)
     drop(constants.suspected_anomalies_table)
     drop(constants.alerts_table)
+    drop(constants.metrics_table)
     run("create_alert_table")
     run("create_tagged_telemetry_table")
     run("create_process_telemetry_table")
     run("create_suspected_anomalies_table")
+    run("create_metrics_table")
 
 
 def main() -> int:

@@ -5,6 +5,7 @@ import os
 import time
 import json
 import demo.constants as constants
+from pyspark.sql.types import StructType
 
 import logging as logging
 log = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
         "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
     .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
     .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    #.config("spark.driver.extraJavaOptions", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=4747")
     .getOrCreate()
     )
 
@@ -179,10 +181,10 @@ def validate_events(df):
     return validated_events
 
 def write_metrics(name, metric):
-    demo_dir = os.path.dirname(__file__)
-    os.makedirs(f"{demo_dir}/telemetry", exist_ok=True)
-    with open(f"{demo_dir}/telemetry/{name}.log.json", "a") as f:
-        f.write(json.dumps(metric) + '\n')
+    json_string = json.dumps(metric)
+    schema = get_spark().table(constants.metrics_table).schema
+    df = get_spark().read.json(get_spark()._sc.parallelize([json_string]), schema=schema)
+    df.write.format("iceberg").insertInto(constants.metrics_table)
 
 def monitor_query(query, name):
     batchId = -1
