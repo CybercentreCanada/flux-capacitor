@@ -198,4 +198,4 @@ def monitor_query(query, name):
                 write_metrics(name, query.lastProgress)
         if query.exception():
             log.error(query.exception)
-            break
+            raise Exception(f"Streaming query {name} failed with query exception {query.exception}")
