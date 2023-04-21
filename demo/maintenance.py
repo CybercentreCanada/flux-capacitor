@@ -10,31 +10,30 @@ from demo.util import (
 
 import logging as logging
 log = logging.getLogger(__name__)
+today = datetime.today()
 
 def prev_hour():
-    prev_hour_ts = datetime.today() - timedelta(hours=1)
+    prev_hour_ts = today - timedelta(hours=1)
     prev_hour = prev_hour_ts.strftime("%Y-%m-%d %H:%M:%S")
     return prev_hour
 
 def prev_day():
-    prev_day_dt = datetime.today() - timedelta(days=1)
+    prev_day_dt = today - timedelta(days=1)
     prev_day = prev_day_dt.strftime("%Y-%m-%d %H:%M:%S")
     return prev_day
 
 def prev_day_partition():
-    prev_day_dt = datetime.today() - timedelta(days=1)
+    prev_day_dt = today - timedelta(days=1)
     prev_day = prev_day_dt.strftime("%Y-%m-%d 00:00:00")
     return prev_day
 
 def prev_week_partition():
-    prev_day_dt = datetime.today() - timedelta(days=7)
+    prev_day_dt = today - timedelta(days=7)
     prev_day = prev_day_dt.strftime("%Y-%m-%d 00:00:00")
     return prev_day
 
 def today_partition():
-    today_dt = datetime.today()
-    today = today_dt.strftime("%Y-%m-%d 00:00:00")
-    return today
+    return today.strftime("%Y-%m-%d 00:00:00")
 
 def expire_snapshot_of_table(table_name):
     log.info(f"expire_snapshot_of_table of {table_name}")
@@ -148,7 +147,9 @@ def every_hour(catalog, schema, verbose):
         get_spark().stop()
         log.info("done")
 
-def every_day(catalog, schema, verbose):
+def every_day(catalog, schema, verbose, day_str):
+    global today
+    today = datetime.strptime(day_str, "%Y-%m-%d")
     init_globals(catalog, schema, verbose)
     create_spark_session("every_day", num_machines=1, driver_mem="2g")
     try:
