@@ -86,7 +86,7 @@ create table {{metrics_table}}
             operatorName: STRING 
             > 
         >,
-    timestamp STRING,
+    timestamp TIMESTAMP,
     worker_name STRING
 )
 using iceberg tblproperties (
@@ -98,3 +98,4 @@ using iceberg tblproperties (
     'write.parquet.row-group-size-bytes' = '33554432',
     'write.spark.fanout.enabled' = 'true'
 )
+PARTITIONED BY (days(timestamp))
