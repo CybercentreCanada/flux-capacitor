@@ -151,7 +151,7 @@ def every_day(catalog, schema, verbose, day_str):
     global today
     today = datetime.strptime(day_str, "%Y-%m-%d")
     init_globals(catalog, schema, verbose)
-    create_spark_session("every_day", num_machines=1, driver_mem="2g")
+    create_spark_session("every_day", num_machines=1, driver_mem="4g")
     try:
         ageoff_process_telemetry_table()
         sort_full_day_of_tagged_telemetry_table()
