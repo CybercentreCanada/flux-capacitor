@@ -150,6 +150,9 @@ def every_hour(catalog, schema, verbose):
 def every_day(catalog, schema, verbose, day_str):
     global today
     today = datetime.strptime(day_str, "%Y-%m-%d")
+    # airflow's {{ds}} is a day prior
+    today = today + datetime.timedelta(days=1)
+    log.info(f"running maitenance for {today}")
     init_globals(catalog, schema, verbose)
     # allocating a lot of driver memory, if no maintenance is performed for a few days
     # can have tables with millions of files, thus millons of file paths need to be
