@@ -108,6 +108,8 @@ def print_telemetry(msg, df):
 def print_anomalies(msg, df):
     if log.isEnabledFor(logging.INFO):
         log.info(msg)
+        n = df.count()
+        log.info(f"table contains {n} rows")
         (df.select('detection_action', 'detection_rule_name', 'timestamp', 'id', 'parent_id', 'Commandline')
         .orderBy("timestamp")
         .show(truncate=False)
