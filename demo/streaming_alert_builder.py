@@ -221,7 +221,7 @@ def foreach_batch_temporal_proximity(anomalies, epoch_id):
 def start_query(catalog, schema, trigger, verbose):
     init_globals(catalog, schema, verbose)
     name = make_name(schema, trigger, __file__)
-    create_spark_session("streaming alert builder", 1)
+    create_spark_session("streaming alert builder", 1, driver_mem="4g")
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
