@@ -160,7 +160,16 @@ def validate_events(df):
     flux_capacitor(df)
     # and re-apply the post-flux conditions
     #post_df = 
-    create_view("post_flux_eval_condition")
+    persisted_view("post_flux_eval_condition")
+    detection_count = get_spark.sql("""
+        select
+            detection_id
+        from
+            global_temp.post_flux_eval_condition
+        where
+            array_contains(sigma_final, detection_rule_name)
+        """).count()
+    log.info(f"number of detection IDs which are validated {detection_count}")
     # The incomming df contains a detection_id column
     # determine which detection_id are validated
     # and use this list of validated detection ids to filer the incoming event rows
