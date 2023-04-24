@@ -161,7 +161,7 @@ def validate_events(df):
     # and re-apply the post-flux conditions
     #post_df = 
     persisted_view("post_flux_eval_condition")
-    detection_count = get_spark.sql("""
+    detection_count = get_spark().sql("""
         select
             detection_id
         from
