@@ -202,9 +202,9 @@ def monitor_query(query, name):
     while(True):
         time.sleep(10)
         if query.lastProgress:
-            log.warn(query.status)
             if batchId != query.lastProgress['batchId']:
                 batchId = query.lastProgress['batchId']
+                log.debug(query.status)
                 write_metrics(name, query.lastProgress)
         if query.exception():
             log.error(query.exception)
