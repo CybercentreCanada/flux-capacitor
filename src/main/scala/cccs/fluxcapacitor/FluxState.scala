@@ -2,6 +2,7 @@ package cccs.fluxcapacitor
 
 import com.google.common.hash.BloomFilter
 import com.google.common.hash.Funnels
+import com.google.common.hash.Funnel
 import org.apache.log4j.Logger
 
 import java.io.ByteArrayInputStream
@@ -9,6 +10,8 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import scala.collection.mutable.ArrayBuffer
+import com.google.common.base.Charsets
+
 
 import scala.util.control.Breaks._
 
@@ -155,7 +158,8 @@ case class FluxState(
 
   def createBloom() = {
     val bloomCapacity: Int = tagCapacity / NUM_BLOOMS
-    val bloom = BloomFilter.create(Funnels.stringFunnel(), bloomCapacity, desiredFpp)
+    val funnel: Funnel[CharSequence] = Funnels.stringFunnel(Charsets.UTF_8)
+    val bloom = BloomFilter.create[CharSequence](funnel, bloomCapacity, desiredFpp)
     // val prep = (bloomCapacity * Math.random()).toInt
     // (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
     bloom
