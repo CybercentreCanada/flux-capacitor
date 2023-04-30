@@ -158,7 +158,7 @@ case class FluxState(
 
   def createBloom() = {
     val bloomCapacity: Int = tagCapacity / NUM_BLOOMS
-    val funnel: Funnel[CharSequence] = Funnels.stringFunnel(Charsets.UTF_8)
+    val funnel: Funnel[CharSequence] = Funnels.stringFunnel()
     val bloom = BloomFilter.create[CharSequence](funnel, bloomCapacity, desiredFpp)
     // val prep = (bloomCapacity * Math.random()).toInt
     // (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
