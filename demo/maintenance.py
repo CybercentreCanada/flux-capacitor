@@ -156,7 +156,7 @@ def every_day(catalog, schema, verbose, day_str):
     # allocating a lot of driver memory, if no maintenance is performed for a few days
     # can have tables with millions of files, thus millons of file paths need to be
     # held in memory by the driver.
-    create_spark_session("every_day", num_machines=1, driver_mem="16g")
+    create_spark_session("every_day", num_machines=1, driver_mem="16g", use_kyro=False)
     try:
         ageoff_process_telemetry_table()
         sort_full_day_of_tagged_telemetry_table()

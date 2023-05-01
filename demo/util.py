@@ -20,10 +20,10 @@ def make_name(schema, trigger, filename):
     basename = basename.replace(".py", "")
     return f"{basename}__{schema}_t{trigger}"
 
-def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15, driver_mem="2g"):
+def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partitions=15, driver_mem="2g", use_kyro=True):
     demo_dir = os.path.dirname(__file__)
 
-    (
+    builder = (
     SparkSession.builder.master(constants.master_uri)
     .appName(name)
     .config("spark.sql.shuffle.partitions", shuffle_partitions)
@@ -37,10 +37,12 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     .config("spark.sql.streaming.stateStore.providerClass", 
         "org.apache.spark.sql.execution.streaming.state.FluxStateStoreProvider")
     .config("spark.sql.streaming.maxBatchesToRetainInMemory", 1)
-    .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    #.config("spark.metrics.conf.*.sink.console.class", "org.apache.spark.metrics.sink.ConsoleSink")
     #.config("spark.driver.extraJavaOptions", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=4747")
-    .getOrCreate()
     )
+    if use_kyro:
+        builder.config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    builder.getOrCreate()
 
 def render_statement(statement, **kwargs):
     kwargs.update(constants.template_vars)
