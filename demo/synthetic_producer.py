@@ -15,10 +15,26 @@ from demo.util import (
 import logging as logging
 log = logging.getLogger(__name__)
 
+def clear_checkpoints(dir):
+    sc = get_spark()._sc
+    hadoopConf = sc._jsc.hadoopConfiguration()
+    FileSystem    = sc._gateway.jvm.org.apache.hadoop.fs.FileSystem
+    Path          = sc._gateway.jvm.org.apache.hadoop.fs.Path
+    URI           = sc._gateway.jvm.java.net.URI
+
+    fs = FileSystem.get(URI(dir), hadoopConf)
+    exists = fs.exists(Path(dir))
+    if exists:
+        print(f"Deleting checkpoints folder {dir} in order to reset the timestamp generation")
+        fs.delete(Path(dir), True)
+
 def start_query(catalog, schema, trigger, verbose):
     init_globals(catalog, schema, verbose)
     name = make_name(schema, trigger, __file__)
     create_spark_session("streaming synthetic producer", 1)
+
+    checkpoint_dir = get_checkpoint_location(constants.process_telemetry_table)
+    clear_checkpoints(checkpoint_dir)
 
     # current time in milliseconds
     ts = int(time.time() * 1000)
@@ -41,7 +57,7 @@ def start_query(catalog, schema, trigger, verbose):
         .outputMode("append")
         .trigger(processingTime=f"{trigger} seconds")
         .option("path", constants.process_telemetry_table)
-        .option("checkpointLocation", get_checkpoint_location(constants.process_telemetry_table))
+        .option("checkpointLocation", checkpoint_dir)
         .start()
     )
 
