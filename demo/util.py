@@ -211,8 +211,8 @@ def monitor_query(query, name):
                 write_metrics(name, query.lastProgress)
                 sleep_time = 0
         if query.exception():
-            log.error(query.exception)
-            raise Exception(f"Streaming query {name} failed with query exception {query.exception}")
+            log.error(query.exception())
+            raise Exception(f"Streaming query {name} failed with query exception {query.exception()}")
         sleep_time = sleep_time + 10
         if sleep_time % 600 == 0:
             log.error(f"Sleept for {sleep_time} waiting for trigger to report progress. This should not happen.")
