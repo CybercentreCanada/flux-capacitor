@@ -39,8 +39,9 @@ def expire_snapshot_of_table(table_name):
     log.info(f"expire_snapshot_of_table of {table_name}")
     sql = f"""
         CALL {constants.catalog}.system.expire_snapshots(
-                '{table_name}',
-                timestamp '{prev_week_partition()}'
+                table => '{table_name}',
+                older_than => timestamp '{prev_week_partition()}',
+                stream_results => true  
         )
     """
     log.info(sql)
@@ -138,6 +139,18 @@ def ageoff_process_telemetry_table():
     log.info(sql)
     get_spark().sql(sql).show()
 
+def ageoff_alerts_table():
+    log.info("ageoff_alerts_table")
+    sql = f"""
+        delete
+        from
+            {constants.alerts_table}
+        where
+            timestamp < '{prev_week_partition()}'
+    """
+    log.info(sql)
+    get_spark().sql(sql).show()
+
 def every_hour(catalog, schema, verbose):
     init_globals(catalog, schema, verbose)
     create_spark_session("every_hour", num_machines=1, driver_mem="2g")
@@ -159,6 +172,7 @@ def every_day(catalog, schema, verbose, day_str):
     create_spark_session("every_day", num_machines=1, driver_mem="16g", use_kyro=False)
     try:
         ageoff_process_telemetry_table()
+        ageoff_alerts_table()
         sort_full_day_of_tagged_telemetry_table()
         binpack_full_day_of_metrics_table()
         expire_snapshot_of_table(constants.alerts_table)
