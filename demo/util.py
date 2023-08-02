@@ -40,8 +40,9 @@ def create_spark_session(name, num_machines, cpu_per_machine=15, shuffle_partiti
     #.config("spark.metrics.conf.*.sink.console.class", "org.apache.spark.metrics.sink.ConsoleSink")
     #.config("spark.driver.extraJavaOptions", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=4747")
     )
-    if use_kyro:
-        builder.config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    # with spark 3.3.4 I'm not able to use Kryo, I'm getting a can't cast integer...
+    # if use_kyro:
+    #     builder.config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     builder.getOrCreate()
 
 def render_statement(statement, **kwargs):
