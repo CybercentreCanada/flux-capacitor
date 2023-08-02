@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from demo.constants import init_globals
+import sys
+from demo.constants import init_globals, parse_args
 import demo.constants as constants
 from demo.util import (
     get_spark,
@@ -47,6 +48,16 @@ def expire_snapshot_of_table(table_name):
     log.info(sql)
     get_spark().sql(sql).show()
 
+def rewrite_manifests_of_table(table_name):
+    log.info(f"rewrite_manifests_of_table of {table_name}")
+    sql = f"""
+    CALL {constants.catalog}.system.rewrite_manifests(
+            table => '{table_name}'
+        )
+    """
+    log.info(sql)
+    get_spark().sql(sql).show(truncate=False)
+
 
 def remove_orphan_files_of_table(table_name):
     log.info(f"remove_orphan_files of {table_name}")
@@ -56,7 +67,6 @@ def remove_orphan_files_of_table(table_name):
             table => '{table_name}',
             location => '{data_location}',
             older_than => timestamp '{prev_day()}',
-            max_concurrent_deletes => 50,
             dry_run => false
         )
     """
@@ -69,7 +79,6 @@ def remove_orphan_files_of_table(table_name):
             table => '{table_name}',
             location => '{metadata_location}',
             older_than => timestamp '{prev_day()}',
-            max_concurrent_deletes => 50,
             dry_run => false
         )
     """
@@ -154,6 +163,12 @@ def ageoff_alerts_table():
 def every_hour(catalog, schema, verbose):
     init_globals(catalog, schema, verbose)
     create_spark_session("every_hour", num_machines=1, driver_mem="2g")
+    rewrite_manifests_of_table(constants.alerts_table)
+    rewrite_manifests_of_table(constants.process_telemetry_table)
+    rewrite_manifests_of_table(constants.suspected_anomalies_table)
+    rewrite_manifests_of_table(constants.tagged_telemetry_table)
+    rewrite_manifests_of_table(constants.metrics_table)
+
     try:
         sort_latest_files_in_current_partition_of_tagged_telemetry_table()
     finally:
@@ -185,8 +200,19 @@ def every_day(catalog, schema, verbose, day_str):
         remove_orphan_files_of_table(constants.suspected_anomalies_table)
         remove_orphan_files_of_table(constants.tagged_telemetry_table)
         remove_orphan_files_of_table(constants.metrics_table)
+
+
     finally:
         get_spark().stop()
         log.info("done")
 
 
+
+def main() -> int:
+    args = parse_args()
+    every_hour(args.catalog, args.schema, args.verbose)
+    every_day(args.catalog, args.schema, args.verbose, "2023-08-01")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
