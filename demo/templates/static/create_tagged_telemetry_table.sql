@@ -10,6 +10,7 @@ create table {{tagged_telemetry_table}} (
 )
 using iceberg
 TBLPROPERTIES (
+  'write.metadata.compression-codec'='gzip',
   'commit.retry.num-retries'='20',
   'write.parquet.compression-codec' = 'zstd',
   'write.parquet.bloom-filter-enabled.column.id' = 'true',

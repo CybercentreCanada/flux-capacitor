@@ -12,6 +12,7 @@ create table {{suspected_anomalies_table}} (
 )
 using iceberg
 TBLPROPERTIES (
+  'write.metadata.compression-codec'='gzip',
   'commit.retry.num-retries'='20',
   'write.parquet.compression-codec' = 'zstd',
   'write.metadata.delete-after-commit.enabled' = 'true',

@@ -14,6 +14,7 @@ create table {{alerts_table}} (
 )
 using iceberg
 tblproperties (
+  'write.metadata.compression-codec'='gzip',
   'commit.retry.num-retries'='20',
   'write.parquet.compression-codec' = 'zstd',
   'write.metadata.delete-after-commit.enabled' = 'true',

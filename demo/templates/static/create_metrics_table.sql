@@ -90,6 +90,7 @@ create table {{metrics_table}}
     worker_name STRING
 )
 using iceberg tblproperties (
+    'write.metadata.compression-codec'='gzip',
     'commit.retry.num-retries' = '20',
     'write.parquet.compression-codec' = 'zstd',
     'write.metadata.delete-after-commit.enabled' = 'true',
