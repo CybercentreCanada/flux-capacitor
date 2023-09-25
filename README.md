@@ -6,12 +6,28 @@ Once a cyber security researcher or analyst develops detection method, they can 
 
 > Sigma is for log files what Snort is for network traffic and YARA is for files.
 
+# Flux-Capacitor Spark map avec groupe d'état
+
+Sigma est un format de signature generic qui permet de créer des détection dans des logs. Les regle Sigma sont facile à écrire et applicable a plusieurs type de log. Encore mieux, les règles Sigma sont abstraites et non rattachées à un SIEM particulier, ce qui en fait un format partageable.
+
+Une fois que le chercheur en cyber security ou l'analyste développe un detection ils peuvent utiliser Sigma pour décrire la détection et partager leur technique avec d'autres. Voici une citation de Sigma HQ:
+
+> Sigma is for log files what Snort is for network traffic and YARA is for files.
+
 ## Use Spark Streaming to run Detections
 
-Spark Structured streaming can easily evaluate the SQL produced by the sigmac compiler. First we create a streaming dataframe by connecting to our favorite queuing mechanism (EventHubs, Kafka). In this example, we will readStream from an Iceberg table, where events are incrementally inserted into. Find out more about Iceberg’s streaming capabilities here.
+Spark Structured streaming can easily evaluate the SQL produced by the sigmac compiler. First we create a streaming dataframe by connecting to our favorite queuing mechanism (EventHubs, Kafka). In this example, we will readStream from an Iceberg table, where events are incrementally inserted into.
+
+## Utiliser Spark Streaming to exécuter nos Détections
+
+Spark Structured streaming peut facilement évaluer le SQL produit par le compilateur sigmac. Tout d'abord on crée un "streaming dataframe" en connectant a notre système de queue préféré (EventHubs, Kafka). Dans nos exemples on va utiliser `readStream` sur une table Iceberg ou nos événement son inserer incrémentalement.
 
 ## The Parent Process Challenge
 Detecting anomalies in discrete events is relatively trivial. However, Sigma rules can correlate an event with previous ones. A classic example of this is found in Windows Security Logs (Event ID 4688). In this log source we find information about a process being created. A crucial piece of information in this log is the process that started this process. You can use these Process ID to determine what the program did while it ran etc.
+
+## La difficulté avec le process parent
+
+La détection d'anomalies dans des événements discrets est relativement triviale. Cependant, les règles Sigma peuvent corréler un événement avec des événements précédents. Un exemple classique de ceci se trouve dans les logs de sécurité Windows (ID d'événement 4688). Dans cette source de log, nous trouvons des informations sur un processus en cours de création. Une information cruciale dans ce journal est le processus qui a démarré ce processus. Vous pouvez utiliser ces ID de processus pour déterminer ce que le programme a fait pendant son exécution, etc.
 
 
 ### We will use these 3 Sigma rules as examples of rules using parent process attributes
