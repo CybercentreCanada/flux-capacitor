@@ -6,7 +6,6 @@ import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.Encoder
-// import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.streaming.GroupState
 import org.apache.spark.sql.streaming.GroupStateTimeout
 import org.apache.spark.sql.streaming.OutputMode.Append
@@ -112,7 +111,6 @@ object FluxCapacitor {
     import sparkSession.implicits._
    
    val outputEncoder = (df.encoder)
-   // val outputEncoder = RowEncoder(df.schema).resolveAndBind()
  
     val stateEncoder = Encoders.product[FluxState]
     val func = new FluxCapacitorMapFunction(tagCapacity, specification, useFluxStore)
