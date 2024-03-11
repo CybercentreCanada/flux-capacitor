@@ -3,6 +3,7 @@ package cccs.fluxcapacitor
 import org.apache.log4j.Logger
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Encoders
+import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.Encoder
@@ -107,21 +108,22 @@ object FluxCapacitor {
       specification: String,
       useFluxStore: Boolean
   ): Dataset[Row] = {
+  
     val sparkSession: SparkSession = SparkSession.builder.getOrCreate
     import sparkSession.implicits._
-   
-   val outputEncoder = (df.encoder)
- 
+    
+    val outputEncoder = Encoders.row(df.schema)
+     
     val stateEncoder = Encoders.product[FluxState]
     val func = new FluxCapacitorMapFunction(tagCapacity, specification, useFluxStore)
-
     var groupKeyIndex = df.schema.fieldIndex(groupKey)
-
     df
-      .groupByKey(row => row.getString(groupKeyIndex))
+     .groupByKey(row => row.getString(groupKeyIndex))
       .flatMapGroupsWithState(
         Append,
         GroupStateTimeout.NoTimeout()
       )(func.processBatch)(stateEncoder, outputEncoder)
+   
   }
+  
 }
