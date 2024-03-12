@@ -3,7 +3,7 @@
 At the root of the git repo run this command to run an integration test
 
 ```bash
-python -m demo.integration_test --catalog hogwarts_users_u_ouo --schema jcc_integration --trigger 60 --verbose true
+python -m demo.integration_test --catalog=hogwarts_users_u --schema=kp_integration --trigger=60 --verbose=true
 ```
 
 ## Launching Streaming Jobs
