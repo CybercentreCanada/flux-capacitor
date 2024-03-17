@@ -18,10 +18,18 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>guava-33.0.0-jre</version>
+            </dependency> -->
+
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>14.0.1</version>
+                <version>guave-33.0.0-jre</version>
+                <scope>system</scope>
+                <systemPath>/home/jovyan/projects/flux-capacitor/guava-33.0.0-jre.jar</systemPath>
             </dependency>
 
             <dependency>
@@ -270,7 +278,7 @@
             <version>1.9.1</version>
         </dependency>
 
-        <dependency>
+        <!-- <dependency>
             <groupId>cccs.hogwarts</groupId>
             <artifactId>hogwarts-vault</artifactId>
             <version>1.12.0</version>
@@ -279,7 +287,7 @@
             <groupId>cccs.hogwarts</groupId>
             <artifactId>spark-datalake-oauth</artifactId>
             <version>1.7.0</version>
-        </dependency>
+        </dependency> -->
 
 
     </dependencies>
@@ -304,6 +312,12 @@
                             <groupId>org.apache.maven.surefire</groupId>
                             <artifactId>surefire-junit4</artifactId>
                             <version>2.22.0</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.iceberg</groupId>
+                            <artifactId>iceberg-bundled-guava</artifactId>
+                            <version>1.4.2</version>
+                            <scope>runtime</scope>
                         </dependency>
                     </dependencies>
                     <executions>

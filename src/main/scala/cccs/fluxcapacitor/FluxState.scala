@@ -11,6 +11,8 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import scala.collection.mutable.ArrayBuffer
 import com.google.common.base.Charsets
+import java.nio.charset.Charset;
+
 
 
 import scala.util.control.Breaks._
@@ -158,7 +160,7 @@ case class FluxState(
 
   def createBloom() = {
     val bloomCapacity: Int = tagCapacity / NUM_BLOOMS
-    val funnel: Funnel[CharSequence] = Funnels.stringFunnel()
+    val funnel: Funnel[CharSequence] = Funnels.stringFunnel(Charset.forName("utf-8"))
     val bloom = BloomFilter.create[CharSequence](funnel, bloomCapacity, desiredFpp)
     // val prep = (bloomCapacity * Math.random()).toInt
     // (1 to prep).map("padding" + _).foreach(s => bloom.put(s))
