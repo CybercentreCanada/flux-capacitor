@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: integration demo",
+            "type": "python",
+            "request": "launch",
+            "module": "demo.integration_test",
+            "justMyCode": false,
+            "args": [ 
+                "--catalog=hogwarts_users_u",
+                "--schema=kp_integration",
+                "--trigger=60",
+                "--verbose=true"
+                ]
+            }
+    ]
+}
