@@ -29,7 +29,7 @@
                 <artifactId>guava</artifactId>
                 <version>guave-33.0.0-jre</version>
                 <scope>system</scope>
-                <systemPath>/home/jovyan/projects/flux-capacitor/guava-33.0.0-jre.jar</systemPath>
+                <systemPath>${project.basedir}/guava-33.0.0-jre.jar</systemPath>
             </dependency>
 
             <dependency>
