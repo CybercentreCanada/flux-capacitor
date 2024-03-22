@@ -43,6 +43,10 @@ select
         sigma.integration_test_temporal_ordered.a 
         AND sigma.integration_test_temporal_ordered.b 
         AND sigma.integration_test_temporal_ordered.c
+        ,
+        'integration_test_nested_fields',
+        sigma.integration_test_nested_fields.a
+        AND sigma.integration_test_nested_fields.b
     )
     , (k,v) -> v = TRUE)) as sigma_final
 from

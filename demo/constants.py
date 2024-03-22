@@ -12,6 +12,8 @@ telemetry_schema = {
     "Name": "string",
     "ImagePath": "string",
     "Commandline": "string",
+    "Child":"Struct<hash:string,instance:bigint,oidtype:string,session:bigint,tag:string,timestamp:timestamp>",
+    "Parent":"Struct<hash:string,instance:bigint,oidtype:string,session:bigint,tag:string,timestamp:timestamp>",
 }
 
 verbose = False

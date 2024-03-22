@@ -55,3 +55,11 @@ rules:
         - name: a
         - name: b
         - name: c
+    - rulename: integration_test_nested_field
+      action: parent
+      tags:
+        - name: a
+        - name: b
+      parent: Parent.tag
+      child: Child.tag
+    

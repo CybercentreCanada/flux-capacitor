@@ -79,6 +79,11 @@ select
             'a', CommandLine ilike '%temporal_ordered_a%',
             'b', CommandLine ilike '%temporal_ordered_b%',
             'c', CommandLine ilike '%temporal_ordered_c%'
+        ),
+        'integration_test_nested_fields',
+        map(
+            'child.tag', child.tag ilike 'tag',
+            'parent.tag', parent.tag ilike 'tag'
         )
     ) as sigma
 from

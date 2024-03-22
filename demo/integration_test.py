@@ -34,7 +34,7 @@ def create_or_replace_tables(args):
 def run_detections(args):
     log.info("The telemetry table consists of Windows start-process events:")
     df = get_spark().table(constants.process_telemetry_table)
-    df.select("timestamp", "id", "parent_id", "Commandline").orderBy("timestamp").show(truncate=False)
+    df.select("timestamp", "id", "parent_id", "Commandline","Child","Parent").orderBy("timestamp").show(truncate=False)
     df.createOrReplaceTempView("process_telemetry_view")
 
     # Step 1: evaluate discrete tags
